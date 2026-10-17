@@ -9,4 +9,10 @@ composer.lock
 .DS_Store
 Thumbs.db
 .agents/
+
+# Local Study & Internal Notes (kept on local disk only)
+PUBLISHING_GUIDE.md
+ACCESS_CONTROL.md
 Install_in_local.md
+MVP.txt
+user_manual/

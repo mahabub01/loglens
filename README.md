@@ -43,7 +43,7 @@ Most monitoring tools pollute your application database with tens of thousands o
 | Feature | Description |
 |---|---|
 | 📜 **Log File Analyzer** | Streaming, bounded reader capable of parsing massive (>100MB) log files without memory spikes. Monolog 3 support, severity filtering, and full stack trace formatting. |
-| ⚡ **Live Tail & Error Grouping** | Real-time incremental log streaming via polling/SSE and automatic SHA-256 error fingerprinting for repeated exceptions. |
+| ⚡ **Live Tail & Error Grouping** | Real-time incremental log streaming via polling and automatic SHA-256 error fingerprinting for repeated exceptions. |
 | 🗄️ **Zero-Query Database Observer** | Passive SQL query profiling, slow query detection (`>500ms`), and automatic N+1 heuristic query warnings with sanitized parameter bindings. |
 | 📈 **HTTP Performance & Latency** | Request timing, throughput, status code distribution (2xx, 3xx, 4xx, 5xx), and statistical latency percentiles (**Median, p95, p99**). |
 | 🌐 **Apache mod_status Live Monitor** | 1-second interval shared collector daemon tracking Requests/sec, Bytes/sec, and active/idle worker scoreboard with SSRF protection. |
@@ -54,12 +54,14 @@ Most monitoring tools pollute your application database with tens of thousands o
 
 ---
 
-## 📋 Requirements
+## 📋 Compatibility & Requirements
 
-- **PHP:** `^8.1 || ^8.2 || ^8.3 || ^8.4`
-- **Laravel Framework:** `^10.0 || ^11.0 || ^12.0 || ^13.0`
-- **Frontend Assets:** None to compile! (Blade, Bootstrap 5, Font Awesome, Chart.js loaded via CDN or local assets)
-- **Database Tables:** **None** (zero migrations)
+| Component | Supported Versions |
+|---|---|
+| **PHP** | `^8.1`, `^8.2`, `^8.3`, `^8.4` |
+| **Laravel Framework** | `^10.0`, `^11.0`, `^12.0`, `^13.0` |
+| **Frontend Dependencies** | None! (Blade, Bootstrap 5, Font Awesome, and Chart.js bundled / CDN) |
+| **Database Migrations** | **None** (zero monitoring tables created) |
 
 ---
 
@@ -97,7 +99,7 @@ By default, LogLens is **disabled** to ensure zero unintended overhead in produc
 LOGLENS_ENABLED=false
 ```
 
-To enable the dashboard in your local or staging environment, add the following to your `.env` file:
+To enable the dashboard in your environment, add the following to your `.env` file:
 
 ```env
 # Enable LogLens Master Switch
@@ -112,7 +114,7 @@ LOGLENS_QUEUE_MONITORING=true
 LOGLENS_SCHEDULER_MONITORING=true
 LOGLENS_ALERTS_ENABLED=true
 
-# Destructive Actions (Log File Truncation/Deletion)
+# Security & Destructive Actions
 LOGLENS_ALLOW_DESTRUCTIVE=false
 ```
 
@@ -126,51 +128,111 @@ Navigate to: **`http://localhost:8000/loglens`**
 
 ---
 
-## 🔒 Authentication & Authorization
+## 🔒 Access Control & Authorization (Locking Down the Dashboard)
 
-LogLens provides multiple authorization layers to seamlessly integrate with any custom user or role system:
+LogLens provides multiple defense-in-depth authorization layers to ensure that unauthorized users or the public cannot access your monitoring dashboard.
 
-### 1. Custom Authorization Callback (`LogLens::auth`)
+### 1. Custom Callback Authorization (Recommended)
 
-In your `app/Providers/AppServiceProvider.php`:
+In your `app/Providers/AppServiceProvider.php`, use the `LogLens::auth()` callback to restrict access strictly to authenticated team members:
 
 ```php
+namespace App\Providers;
+
+use Illuminate\Support\ServiceProvider;
 use MehrabHossain\LogLens\Facades\LogLens;
 
-public function boot(): void
+class AppServiceProvider extends ServiceProvider
 {
-    // Authorize read access to LogLens dashboard
-    LogLens::auth(function ($request) {
-        return app()->environment('local') ||
-               in_array($request->user()?->email, [
-                   'admin@example.com',
-                   'devops@example.com',
-               ]);
-    });
+    public function boot(): void
+    {
+        // Authorize dashboard view access (Read-Only)
+        LogLens::auth(function ($request) {
+            $user = $request->user();
 
-    // Authorize destructive actions (clearing/deleting log files)
-    LogLens::destructiveAuth(function ($request) {
-        return in_array($request->user()?->email, [
-            'lead-architect@example.com',
-        ]);
-    });
+            return $user && in_array($user->email, [
+                'lead-developer@example.com',
+                'admin@example.com',
+                'devops@example.com',
+            ]);
+        });
+
+        // Authorize destructive actions (clearing/deleting log files)
+        LogLens::destructiveAuth(function ($request) {
+            return $request->user()?->email === 'lead-architect@example.com';
+        });
+    }
 }
 ```
 
-### 2. Laravel Gate Integration
+> [!NOTE]
+> Any unauthenticated or unauthorized visitor attempting to access `/loglens` will immediately receive a **`403 Forbidden`** response.
 
-Alternatively, define standard Laravel Gates in your `AuthServiceProvider`:
+### 2. Standard Laravel Gate Integration
+
+Alternatively, register standard Laravel Gates in your `AuthServiceProvider` (or `AppServiceProvider` in Laravel 11/12):
 
 ```php
 use Illuminate\Support\Facades\Gate;
 
 Gate::define('viewLogLens', function ($user) {
-    return $user->hasRole('admin');
+    return $user->hasRole('admin') || $user->hasRole('super-admin');
 });
 
 Gate::define('manageLogLens', function ($user) {
     return $user->hasRole('super-admin');
 });
+```
+
+### 3. Automatically Redirect Unauthenticated Visitors to `/login`
+
+If you want visitors without an active session to be automatically redirected to your application's login page instead of seeing a 403 page, simply add Laravel's native `'auth'` middleware to `config/loglens.php`:
+
+```php
+// config/loglens.php
+
+'middleware' => [
+    'web',
+    'auth', // <-- Automatically redirects unauthenticated guests to /login
+],
+```
+
+### 4. Restricting by IP Whitelist (Office / VPN Only)
+
+To restrict dashboard access exclusively to specific static IP addresses or internal corporate VPNs:
+
+```php
+LogLens::auth(function ($request) {
+    $allowedIps = [
+        '127.0.0.1',
+        '10.0.1.50',
+        '203.0.113.10', // Corporate static IP
+    ];
+
+    return in_array($request->ip(), $allowedIps, true);
+});
+```
+
+### 5. Disable Local Environment Auto-Access
+
+By default, LogLens allows direct access in local environments (`APP_ENV=local`) to make development convenient. To enforce strict authentication even on your local machine, set:
+
+```php
+// config/loglens.php
+
+'auth' => [
+    'gate' => 'viewLogLens',
+    'destructive_gate' => 'manageLogLens',
+    'allow_local_by_default' => false, // <-- Enforces authorization on local environment
+],
+```
+
+### 6. Obscure the Dashboard URL
+
+You can change the URL prefix from `/loglens` to any secret path in your `.env`:
+
+```env
+LOGLENS_PATH=internal-diagnostic-portal-9821
 ```
 
 ---
@@ -201,10 +263,10 @@ LogLens connects to Apache's native `mod_status` module to observe web server pe
 
 ```
 [ Apache Server ]  --->  [ artisan loglens:apache-collect ]  --->  [ Shared Cache (Redis/File) ]
-                               (Background Daemon)                           │
-                                                                             ▼
+                                (Background Daemon)                           │
+                                                                              ▼
 [ Dashboard Visitors ]  <-------------------------------------------  [ Read Instant Snapshot ]
-                                 (0 Direct Apache Hits)
+                                  (0 Direct Apache Hits)
 ```
 
 ### Setup Instructions
@@ -233,7 +295,7 @@ LogLens connects to Apache's native `mod_status` module to observe web server pe
 
 Measured on **PHP 8.3** using [`tests/Performance/PerformanceBenchmarkTest.php`](tests/Performance/PerformanceBenchmarkTest.php):
 
-| Benchmark Scenario | Measured Result | Performance Impact |
+| Benchmark Scenario | Measured Result | Performance Assessment |
 |---|---|---|
 | **Query Event Handling** | **10.44 µs** per event (**95,799 queries/sec**) | Negligible overhead on `DB::listen` |
 | **HTTP Request Collection** | **64.06 µs** per request (**15,615 req/sec**) | Sub-millisecond middleware footprint |
@@ -269,15 +331,29 @@ vendor/bin/phpunit tests/Security/ZeroExtraQueryTest.php
 
 ---
 
-## 📖 Documentation & Guides
+## 🚀 Production Deployment Checklist
 
-- 📖 [Visual User Manual & Action Guide (বাংলা)](user_manual/index.html) — Complete visual user manual with screenshots and action breakdowns.
-- 🔐 [Access Control & Dashboard Lock Guide (বাংলা)](ACCESS_CONTROL.md) — How to lock down the dashboard, set up user authorization, and prevent public access.
-- 📘 [GitHub & Packagist Publishing Guide](PUBLISHING_GUIDE.md) — Step-by-step instructions for publishing and releasing packages.
-- 🔒 [Security Policy & Threat Model](SECURITY.md) — Comprehensive defense-in-depth documentation.
-- 📋 [Changelog](CHANGELOG.md) — Detailed SemVer release history for all phases.
-- ⬆️ [Upgrade Guide](UPGRADE.md) — Migration and configuration synchronization checklist.
-- 🤝 [Contributing Guidelines](CONTRIBUTING.md) — Coding standards, testing rules, and PR checklist.
+Before deploying LogLens to a live production cluster:
+
+1. [ ] **Master Switch Configured:** Ensure `LOGLENS_ENABLED=true` in production `.env`.
+2. [ ] **Authorization Registered:** Register `LogLens::auth()` in `AppServiceProvider` or define the `viewLogLens` Gate.
+3. [ ] **Destructive Actions Restricted:** Keep `LOGLENS_ALLOW_DESTRUCTIVE=false` unless log truncation is explicitly authorized via `LogLens::destructiveAuth()`.
+4. [ ] **Allowed Apache Hosts:** If using Apache monitoring, verify `LOGLENS_APACHE_STATUS_URL` points to `http://127.0.0.1/server-status?auto` and allowed hosts are restricted.
+5. [ ] **Queue Backlog Strict Mode:** Leave `LOGLENS_QUEUE_POLL_BACKLOG=false` to ensure zero database queries on queue monitoring dashboards.
+6. [ ] **Redis Prefix Isolation:** If multiple applications share a Redis instance, configure distinct `LOGLENS_REDIS_PREFIX=myapp:loglens:metrics`.
+7. [ ] **Alert Thresholds:** Adjust CPU, Memory, Disk, and HTTP error rate alert thresholds in `config/loglens.php` to match your infrastructure capacity.
+
+---
+
+## 🤝 Contributing
+
+Contributions, bug reports, and pull requests are welcome! Please review [CONTRIBUTING.md](CONTRIBUTING.md) for details on code style, testing, and submission guidelines.
+
+---
+
+## 🔒 Security Policy
+
+If you discover a security vulnerability within LogLens, please review our [Security Policy](SECURITY.md).
 
 ---
 
