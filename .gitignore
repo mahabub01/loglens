@@ -9,3 +9,4 @@ composer.lock
 .DS_Store
 Thumbs.db
 .agents/
+Install_in_local.md

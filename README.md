@@ -271,6 +271,7 @@ vendor/bin/phpunit tests/Security/ZeroExtraQueryTest.php
 
 ## 📖 Documentation & Guides
 
+- 📖 [Visual User Manual & Action Guide (বাংলা)](user_manual/index.html) — Complete visual user manual with screenshots and action breakdowns.
 - 📘 [GitHub & Packagist Publishing Guide](PUBLISHING_GUIDE.md) — Step-by-step instructions for publishing and releasing packages.
 - 🔒 [Security Policy & Threat Model](SECURITY.md) — Comprehensive defense-in-depth documentation.
 - 📋 [Changelog](CHANGELOG.md) — Detailed SemVer release history for all phases.

@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="bn" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LogLens v1.0.0 — সম্পূর্ণ ইউজার ম্যানুয়াল ও অ্যাকশন গাইড</title>
+
+    <!-- Google Fonts: Hind Siliguri + Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+
+    <!-- Bootstrap 5 CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <!-- Font Awesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+
+    <style>
+        :root {
+            --ll-body-bg: #0b1120;
+            --ll-sidebar-bg: #0f172a;
+            --ll-card-bg: #1e293b;
+            --ll-card-border: #334155;
+            --ll-accent: #3b82f6;
+            --ll-accent-hover: #2563eb;
+            --ll-text-main: #f8fafc;
+            --ll-text-muted: #94a3b8;
+            --ll-success: #10b981;
+            --ll-warning: #f59e0b;
+            --ll-danger: #ef4444;
+            --ll-info: #06b6d4;
+        }
+
+        body {
+            background-color: var(--ll-body-bg);
+            color: var(--ll-text-main);
+            font-family: 'Hind Siliguri', 'Inter', -apple-system, sans-serif;
+            line-height: 1.7;
+            scroll-behavior: smooth;
+        }
+
+        code, pre, .font-mono {
+            font-family: 'Fira Code', Consolas, monospace !important;
+        }
+
+        /* Sidebar Styling */
+        .manual-sidebar {
+            width: 300px;
+            background-color: var(--ll-sidebar-bg);
+            border-right: 1px solid var(--ll-card-border);
+            height: 100vh;
+            position: sticky;
+            top: 0;
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+
+        .manual-sidebar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .manual-sidebar::-webkit-scrollbar-thumb {
+            background-color: #334155;
+            border-radius: 4px;
+        }
+
+        .sidebar-brand {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--ll-card-border);
+            background: linear-gradient(180deg, rgba(30, 41, 59, 0.6) 0%, rgba(15, 23, 42, 0.9) 100%);
+        }
+
+        .nav-item-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 18px;
+            color: var(--ll-text-muted);
+            text-decoration: none;
+            font-size: 0.95rem;
+            font-weight: 500;
+            border-radius: 8px;
+            margin: 3px 12px;
+            transition: all 0.2s ease;
+        }
+
+        .nav-item-link:hover {
+            color: #ffffff;
+            background-color: rgba(255, 255, 255, 0.05);
+            transform: translateX(3px);
+        }
+
+        .nav-item-link.active {
+            color: #ffffff;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.25), rgba(99, 102, 241, 0.25));
+            border-left: 3px solid var(--ll-accent);
+        }
+
+        .nav-item-link i {
+            width: 20px;
+            text-align: center;
+            font-size: 1rem;
+        }
+
+        /* Content Styling */
+        .manual-content {
+            flex-grow: 1;
+            padding: 40px 60px;
+            max-width: 1400px;
+        }
+
+        .manual-card {
+            background-color: var(--ll-card-bg);
+            border: 1px solid var(--ll-card-border);
+            border-radius: 12px;
+            padding: 28px;
+            margin-bottom: 35px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+        }
+
+        .manual-section-header {
+            border-bottom: 1px solid var(--ll-card-border);
+            padding-bottom: 16px;
+            margin-bottom: 24px;
+        }
+
+        .section-badge {
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+
+        /* Screenshot Frame */
+        .screenshot-frame {
+            border: 1px solid var(--ll-card-border);
+            border-radius: 10px;
+            overflow: hidden;
+            background-color: #030712;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.3);
+            margin: 24px 0;
+            position: relative;
+        }
+
+        .browser-mockup-header {
+            background-color: #1e293b;
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--ll-card-border);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .browser-dot {
+            width: 11px;
+            height: 11px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .browser-dot.red { background-color: #ef4444; }
+        .browser-dot.yellow { background-color: #f59e0b; }
+        .browser-dot.green { background-color: #10b981; }
+
+        .browser-address {
+            background-color: #0f172a;
+            border-radius: 6px;
+            padding: 3px 14px;
+            font-size: 0.8rem;
+            color: #94a3b8;
+            flex-grow: 1;
+            max-width: 450px;
+        }
+
+        .screenshot-img {
+            width: 100%;
+            height: auto;
+            display: block;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        .screenshot-img:hover {
+            opacity: 0.95;
+        }
+
+        /* Action Pill & Table */
+        .action-table th {
+            background-color: rgba(15, 23, 42, 0.6);
+            color: var(--ll-text-muted);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+        }
+
+        .action-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.825rem;
+            font-weight: 600;
+        }
+
+        .tip-box {
+            background-color: rgba(6, 182, 212, 0.1);
+            border-left: 4px solid var(--ll-info);
+            padding: 16px 20px;
+            border-radius: 0 8px 8px 0;
+            margin: 20px 0;
+        }
+
+        .warning-box {
+            background-color: rgba(239, 68, 68, 0.1);
+            border-left: 4px solid var(--ll-danger);
+            padding: 16px 20px;
+            border-radius: 0 8px 8px 0;
+            margin: 20px 0;
+        }
+
+        .search-box {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--ll-card-border);
+        }
+
+        .search-input {
+            background-color: #1e293b;
+            border: 1px solid #334155;
+            color: #f8fafc;
+            border-radius: 8px;
+            padding: 8px 14px;
+            font-size: 0.9rem;
+            width: 100%;
+        }
+        .search-input:focus {
+            outline: none;
+            border-color: var(--ll-accent);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+
+        /* Modal Preview */
+        .modal-img-preview {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+        }
+
+        @media (max-width: 992px) {
+            .manual-sidebar {
+                display: none;
+            }
+            .manual-content {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="d-flex">
+    <!-- Sidebar -->
+    <aside class="manual-sidebar">
+        <div class="sidebar-brand">
+            <div class="d-flex align-items-center gap-2">
+                <i class="fa-solid fa-chart-line text-primary fs-4"></i>
+                <div>
+                    <h5 class="mb-0 fw-bold text-light">LogLens</h5>
+                    <span class="small text-muted">ইউজার ম্যানুয়াল ও অ্যাকশন গাইড</span>
+                </div>
+            </div>
+            <div class="mt-2">
+                <span class="badge bg-primary text-white font-mono" style="font-size: 0.7rem;">v1.0.0</span>
+                <span class="badge bg-success-subtle text-success border border-success-subtle ms-1" style="font-size: 0.7rem;">Laravel 10-13</span>
+            </div>
+        </div>
+
+        <div class="search-box">
+            <input type="text" id="manualSearch" class="search-input" placeholder="মেনু বা অ্যাকশন খুঁজুন...">
+        </div>
+
+        <nav class="p-2" id="sidebarNav">
+            <div class="text-uppercase text-muted px-3 py-2" style="font-size: 0.7rem; font-weight: 700; letter-spacing: 0.05em;">সূচিপত্র</div>
+            <a href="#intro" class="nav-item-link active"><i class="fa-solid fa-compass"></i> ভূমিকা ও গ্যারান্টি</a>
+            <a href="#dashboard" class="nav-item-link"><i class="fa-solid fa-gauge-high"></i> ড্যাশবোর্ড ওভারভিউ</a>
+            <a href="#logs" class="nav-item-link"><i class="fa-solid fa-file-lines"></i> লগ ফাইল অ্যানালাইজার</a>
+            <a href="#errors" class="nav-item-link"><i class="fa-solid fa-triangle-exclamation"></i> এরর অ্যানালাইসিস</a>
+            <a href="#http" class="nav-item-link"><i class="fa-solid fa-bolt-lightning"></i> HTTP পারফরম্যান্স</a>
+            <a href="#database" class="nav-item-link"><i class="fa-solid fa-database"></i> ডাটাবেস কুয়েরি প্রফাইল</a>
+            <a href="#apache" class="nav-item-link"><i class="fa-solid fa-server"></i> অ্যাপাচি লাইভ মনিটর</a>
+            <a href="#server" class="nav-item-link"><i class="fa-solid fa-microchip"></i> সার্ভার ও কন্টেইনার হেলথ</a>
+            <a href="#queue" class="nav-item-link"><i class="fa-solid fa-list-check"></i> কিউ জব মনিটরিং</a>
+            <a href="#scheduler" class="nav-item-link"><i class="fa-solid fa-clock"></i> কনসোল শিডিউলার</a>
+            <a href="#security" class="nav-item-link"><i class="fa-solid fa-shield-halved"></i> নিরাপত্তা ও ডেস্ট্রাক্টিভ অ্যাকশন</a>
+            <a href="#config-guide" class="nav-item-link"><i class="fa-solid fa-sliders"></i> .env কনফিগারেশন চেকলিস্ট</a>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="manual-content">
+
+        <!-- Top Header Info -->
+        <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom border-secondary-subtle">
+            <div>
+                <h2 class="fw-bold text-light mb-1">🔍 LogLens Monitoring — বিস্তারিত ইউজার ম্যানুয়াল</h2>
+                <p class="text-muted mb-0">লারাভেল অ্যাপ্লিকেশনের জন্য লাইটওয়েট, জিরো-কুয়েরি এবং ফুল-স্ট্যাক মনিটরিং ড্যাশবোর্ড হ্যান্ডবুক।</p>
+            </div>
+            <div class="d-none d-md-flex gap-2">
+                <a href="../README.md" class="btn btn-outline-secondary btn-sm"><i class="fa-brands fa-github me-1"></i> README</a>
+                <a href="../PUBLISHING_GUIDE.md" class="btn btn-outline-primary btn-sm"><i class="fa-solid fa-cloud-arrow-up me-1"></i> পাবলিশিং গাইড</a>
+            </div>
+        </div>
+
+        <!-- 1. ভূমিকা ও মূলনীতি -->
+        <section id="intro" class="manual-card">
+            <div class="manual-section-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h3 class="fw-bold mb-1"><i class="fa-solid fa-compass text-primary me-2"></i>১. ভূমিকা ও আর্কিটেকচারাল মূলনীতি</h3>
+                    <span class="text-muted small">LogLens কেন অনন্য এবং কীভাবে কাজ করে</span>
+                </div>
+                <span class="badge bg-primary section-badge">Core Architecture</span>
+            </div>
+
+            <p>
+                <strong>LogLens</strong> হলো লারাভেল ডেভেলপার ও ডেভঅপস ইঞ্জিনিয়ারদের জন্য তৈরি করা একটি রিয়েল-টাইম অ্যাপ্লিকেশন লগ অ্যানালাইজার এবং ফুল-স্ট্যাক পারফরম্যান্স মনিটরিং প্ল্যাটফর্ম। এটি <strong>Laravel 10, 11, 12, এবং 13</strong> ভার্সনের সাথে শতভাগ কম্প্যাটিবল।
+            </p>
+
+            <div class="row g-3 my-3">
+                <div class="col-md-4">
+                    <div class="p-3 rounded-3 border border-secondary" style="background: rgba(15, 23, 42, 0.4);">
+                        <div class="text-success fs-5 mb-2"><i class="fa-solid fa-shield-check"></i> জিরো এক্সট্রা কুয়েরি</div>
+                        <p class="small text-muted mb-0">মনিটরিংয়ের জন্য অ্যাপ্লিকেশনের ডাটাবেসে কোনো বাড়তি SQL কুয়েরি চালানো হয় না। এটি সম্পূর্ণ প্যাসিভ ইভেন্ট লিসেনারের মাধ্যমে কাজ করে।</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="p-3 rounded-3 border border-secondary" style="background: rgba(15, 23, 42, 0.4);">
+                        <div class="text-info fs-5 mb-2"><i class="fa-solid fa-table-cells"></i> জিরো ডাটাবেস মাইগ্রেশন</div>
+                        <p class="small text-muted mb-0">আপনার অ্যাপ্লিকেশনের ডাটাবেসে কোনো টেবিল তৈরি করতে হয় না। সব মেট্রিক্স বাউন্ডেড মেমোরি বা অপশনাল রেডিসে জমা থাকে।</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="p-3 rounded-3 border border-secondary" style="background: rgba(15, 23, 42, 0.4);">
+                        <div class="text-warning fs-5 mb-2"><i class="fa-brands fa-bootstrap"></i> জিরো ফ্রন্টএন্ড বিল্ড টুল</div>
+                        <p class="small text-muted mb-0">Tailwind, Node, Vite বা npm বিল্ডের কোনো ঝামেলা নেই। এটি বিশুদ্ধ Blade, Bootstrap 5 এবং Font Awesome দিয়ে তৈরি।</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tip-box">
+                <strong><i class="fa-solid fa-lightbulb me-1"></i> মনে রাখবেন:</strong> ডিফল্টভাবে প্রোডাকশন নিরাপত্তার জন্য প্যাকেজটি বন্ধ থাকে (<code class="text-light">LOGLENS_ENABLED=false</code>)। আপনার প্রজেক্টের <code class="text-light">.env</code> ফাইলে <code class="text-light">LOGLENS_ENABLED=true</code> সেট করলেই ড্যাশবোর্ডটি লাইভ হবে।
+            </div>
+        </section>
+
+        <!-- 2. ওভারভিউ ড্যাশবোর্ড -->
+        <section id="dashboard" class="manual-card">
+            <div class="manual-section-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h3 class="fw-bold mb-1"><i class="fa-solid fa-gauge-high text-info me-2"></i>২. ড্যাশবোর্ড ওভারভিউ (Overview Dashboard)</h3>
+                    <span class="text-muted small">রুট: <code class="text-info">/loglens</code></span>
+                </div>
+                <span class="badge bg-info text-dark section-badge">Home Route</span>
+            </div>
+
+            <p>
+                ড্যাশবোর্ড ওভারভিউ হলো সমগ্র সিস্টেমের কমান্ড সেন্টার। এখান থেকে একসাথে অ্যাপ্লিকেশন লগ, ডাটাবেস পারফরম্যান্স, HTTP ট্রাফিক, সার্ভার রিসোর্স এবং সক্রিয় অ্যালার্টগুলোর সারসংক্ষেপ এক নজরে দেখা যায়।
+            </p>
+
+            <!-- স্ক্রিনশট ফ্রেম -->
+            <div class="screenshot-frame">
+                <div class="browser-mockup-header">
+                    <span class="browser-dot red"></span>
+                    <span class="browser-dot yellow"></span>
+                    <span class="browser-dot green"></span>
+                    <span class="browser-address">https://your-domain.com/loglens</span>
+                </div>
+                <img src="screenshots/01_dashboard.png" alt="LogLens Overview Dashboard" class="screenshot-img" onclick="openLightbox(this.src, 'Overview Dashboard')">
+            </div>
+            <div class="text-center text-muted small mt-1 mb-4"><i class="fa-solid fa-hand-pointer me-1"></i> স্ক্রিনশটটি বড় করে দেখতে ছবিতে ক্লিক করুন</div>
+
+            <h5 class="fw-bold text-light mt-4 mb-3"><i class="fa-solid fa-layer-group text-primary me-2"></i>পেজের মূল উপাদান ও কার্ডসমূহ</h5>
+            <div class="table-responsive">
+                <table class="table table-dark table-hover table-bordered border-secondary action-table align-middle">
+                    <thead>
+                        <tr>
+                            <th style="width: 25%;">উপাদান / কার্ড</th>
+                            <th style="width: 45%;">বিবরণ ও কার্যকারিতা</th>
+                            <th style="width: 30%;">প্রদর্শিত তথ্য</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong class="text-light">Environment Badge</strong></td>
+                            <td>অ্যাপ্লিকেশন বর্তমানে কোন পরিবেশে চলছে তা নির্দেশ করে (Local, Staging, Testing, Production)।</td>
+                            <td><span class="badge bg-warning text-dark">TESTING</span> বা <span class="badge bg-danger">PRODUCTION</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong class="text-light">Log Files & Total Size</strong></td>
+                            <td><code class="text-info">storage/logs/</code> ফোল্ডারে মোট কয়টি লগ ফাইল আছে এবং তাদের সর্বমোট ডিস্ক সাইজ।</td>
+                            <td>যেমন: <strong>2 files (1.1 MB)</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong class="text-light">HTTP Traffic Snapshot</strong></td>
+                            <td>অ্যাপ্লিকেশনে আসা সর্বমোট রিকোয়েস্ট, গড় রেসপন্স টাইম এবং স্লো রিকোয়েস্টের অনুপাত।</td>
+                            <td>Total Requests, Avg Latency (ms), p95/p99</td>
+                        </tr>
+                        <tr>
+                            <td><strong class="text-light">Database Observed Queries</strong></td>
+                            <td>প্যাসিভভাবে ট্র্যাক করা কুয়েরির সংখ্যা এবং স্লো কুয়েরি কাউন্টার।</td>
+                            <td>Strict Mode (0 Extra Queries) গ্যারান্টি</td>
+                        </tr>
+                        <tr>
+                            <td><strong class="text-light">Server Resource Widget</strong></td>
+                            <td>সার্ভারের CPU ব্যবহার, RAM ইউটিলাইজেশন এবং রুট ডিস্কের খালি জায়গা।</td>
+                            <td>রিয়েল-টাইম পার্সেন্টেজ গেজ ও প্রগ্রেস বার</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h5 class="fw-bold text-light mt-4 mb-3"><i class="fa-solid fa-bolt text-warning me-2"></i>এই পেজের অ্যাকশন ও কন্ট্রোলসমূহ</h5>
+            <div class="table-responsive">
+                <table class="table table-dark table-hover table-bordered border-secondary action-table align-middle">
+                    <thead>
+                        <tr>
+                            <th style="width: 25%;">অ্যাকশন / বাটন</th>
+                            <th style="width: 45%;">কীভাবে কাজ করে</th>
+                            <th style="width: 30%;">প্রয়োজনীয় পারমিশন</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="action-badge bg-primary text-white"><i class="fa-solid fa-arrows-rotate"></i> Auto-Refresh Interval</span></td>
+                            <td>ড্যাশবোর্ড ডেটা স্বয়ংক্রিয়ভাবে কত সেকেন্ড পর পর রিফ্রেশ হবে তা ড্রপডাউন থেকে নির্বাচন করা যায় (5s, 10s, 30s, Manual)।</td>
+                            <td>সাধারণ ভিউয়ার পারমিশন</td>
+                        </tr>
+                        <tr>
+                            <td><span class="action-badge bg-secondary text-white"><i class="fa-solid fa-arrow-up-right-from-square"></i> Quick Module Jump</span></td>
+                            <td>যেকোনো স্পেসিফিক কার্ডে ক্লিক করলে সরাসরি সংশ্লিষ্ট মডিউলে (যেমন Logs, HTTP, DB) নিয়ে যাবে।</td>
+                            <td>মডিউল স্পেসিফিক অথোরাইজেশন</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- 3. লগ ফাইল অ্যানালাইজার -->
+        <section id="logs" class="manual-card">
+            <div class="manual-section-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h3 class="fw-bold mb-1"><i class="fa-solid fa-file-lines text-warning me-2"></i>৩. লগ ফাইল অ্যানালাইজার ও লাইভ টেইল (Log Viewer)</h3>
+                    <span class="text-muted small">রুট: <code class="text-warning">/loglens/logs</code></span>
+                </div>
+                <span class="badge bg-warning text-dark section-badge">Core Log Viewer</span>
+            </div>
+
+            <p>
+                লারাভেলের Monolog ফাইলগুলো ব্রাউজ, সার্চ, ফিল্টার এবং লাইভ স্ট্রিম করার জন্য এই পেজটি ডিজাইন করা হয়েছে। এটি বাউন্ডেড স্ট্রিমিং রিডার ব্যবহার করে, যার ফলে <strong>১০০ মেগাবাইটের বেশি বড় লগ ফাইলও মেমরি ক্র্যাশ ছাড়া মুহূর্তের মধ্যে পড়া সম্ভব।</strong>
+            </p>
+
+            <div class="screenshot-frame">
+                <div class="browser-mockup-header">
+                    <span class="browser-dot red"></span>
+                    <span class="browser-dot yellow"></span>
+                    <span class="browser-dot green"></span>
+                    <span class="browser-address">https://your-domain.com/loglens/logs</span>
+                </div>
+                <img src="screenshots/02_logs.png" alt="LogLens Log Viewer" class="screenshot-img" onclick="openLightbox(this.src, 'Log Viewer & Live Tail')">
+            </div>
+            <div class="text-center text-muted small mt-1 mb-4"><i class="fa-solid fa-hand-pointer me-1"></i> স্ক্রিনশটটি বড় করে দেখতে ছবিতে ক্লিক করুন</div>
+
+            <h5 class="fw-bold text-light mt-4 mb-3"><i class="fa-solid fa-sliders text-primary me-2"></i>ফিল্টারিং ও সার্চিং টুলস</h5>
+            <ul>
+                <li><strong>লগ ফাইল সিলেক্টর ড্রপডাউন:</strong> <code class="text-info">laravel.log</code>, <code class="text-info">worker.log</code> বা ডেইলি লগ ফাইলগুলোর যেকোনোটি নির্বাচন করা যায়। ফাইলের পাশে সাইজ এবং লাস্ট মডিফাইড সময় দেখা যায়।</li>
+                <li><strong>লগ লেভেল ফিল্টার পিলস:</strong> সব লেভেল (ALL) অথবা নির্দিষ্ট লেভেল যেমন <span class="badge bg-danger">ERROR</span>, <span class="badge bg-warning text-dark">WARNING</span>, <span class="badge bg-info text-dark">INFO</span>, <span class="badge bg-secondary">DEBUG</span>, <span class="badge bg-dark border border-danger text-danger">EMERGENCY</span> ফিল্টার করা যায়।</li>
+                <li><strong>লাইভ সার্চ বক্স:</strong> এক্সেপশনের নাম, ইউজার আইডি, আইপি অ্যাড্রেস বা স্ট্যাকট্রেসের যেকোনো কি-ওয়ার্ড টাইপ করলেই ইনস্ট্যান্ট ফিল্টার হয়।</li>
+                <li><strong>লাইন লিমিট ড্রপডাউন:</strong> এক পেজে কতগুলো লাইন দেখতে চান (50, 100, 250, 500) তা সেট করা যায়।</li>
+            </ul>
+
+            <h5 class="fw-bold text-light mt-4 mb-3"><i class="fa-solid fa-bolt text-danger me-2"></i>সকল অ্যাকশন ও বাটনের কার্যপদ্ধতি</h5>
+            <div class="table-responsive">
+                <table class="table table-dark table-hover table-bordered border-secondary action-table align-middle">
+                    <thead>
+                        <tr>
+                            <th style="width: 25%;">অ্যাকশন বাটন</th>
+                            <th style="width: 45%;">কার্যপদ্ধতি ও ব্যাকগ্রাউন্ড প্রসেস</th>
+                            <th style="width: 30%;">নিরাপত্তা স্তর</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="action-badge bg-primary text-white"><i class="fa-solid fa-download"></i> Download Log</span></td>
+                            <td>সম্পূর্ণ লগ ফাইলটি ব্রাউজারে নিরাপদ স্ট্রিমিংয়ের মাধ্যমে ডাউনলোড করে। কোনো পাথ ট্রাভার্সাল (<code class="text-danger">../</code>) সুযোগ নেই।</td>
+                            <td>রিড পারমিশন (Read Only)</td>
+                        </tr>
+                        <tr>
+                            <td><span class="action-badge bg-success text-white"><i class="fa-solid fa-play"></i> Live Tail Toggle</span></td>
+                            <td>চালু করলে প্রতি ২ সেকেন্ড পর পর স্বয়ংক্রিয়ভাবে নতুন আসা লগ লাইনগুলো পেজে যুক্ত হয় এবং স্ক্রিন অটো-স্ক্রোল করে নিচে নিয়ে যায়।</td>
+                            <td>কোনো সার্ভার লোড নেই</td>
+                        </tr>
+                        <tr>
+                            <td><span class="action-badge bg-danger text-white"><i class="fa-solid fa-trash-can"></i> Clear File</span></td>
+                            <td>লগ ফাইলটিকে মুছে না ফেলে নিরাপদে এর সাইজ <strong>০ বাইট (Truncate)</strong> করে দেয়। এটি ক্লিক করলে একটি <em>Destructive Confirmation Modal</em> পপআপ ওপেন হবে।</td>
+                            <td><strong>Destructive Auth + Confirmation Required</strong></td>
+                        </tr>
+                        <tr>
+                            <td><span class="action-badge bg-info text-dark"><i class="fa-solid fa-broom"></i> Retention Cleanup</span></td>
+                            <td>কনফিগারেশনে নির্ধারিত দিনের চেয়ে পুরোনো লগ ফাইলগুলো প্রিভিউ করে এক ক্লিকে ডিলিট করার অপশন দেয়।</td>
+                            <td><strong>Destructive Authorization</strong></td>
+                        </tr>
+                        <tr>
+                            <td><span class="action-badge bg-secondary text-white"><i class="fa-solid fa-code"></i> Stack Trace Accordion</span></td>
+                            <td>এরর লাইনের পাশে অ্যারো আইকনে ক্লিক করলে সম্পূর্ণ পিএইচপি স্ট্যাকট্রেস সুন্দর হাইলাইটেড ফরম্যাটে খুলে যাবে।</td>
+                            <td>XSS সুরক্ষিত ও অটো-এসকেপড</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- 4. এরর অ্যানালাইসিস -->
+        <section id="errors" class="manual-card">
+            <div class="manual-section-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h3 class="fw-bold mb-1"><i class="fa-solid fa-triangle-exclamation text-danger me-2"></i>৪. এরর অ্যানালাইসিস ও গ্রুপ ফিঙ্গারপ্রিন্টিং (Error Analysis)</h3>
+                    <span class="text-muted small">রুট: <code class="text-danger">/loglens/errors</code></span>
+                </div>
+                <span class="badge bg-danger section-badge">Fingerprint Engine</span>
+            </div>
+
+            <p>
+                লগ ফাইলে বারবার একই এরর হাজার বার রেকর্ড হলেও ডেভেলপারদের পক্ষে বোঝা কঠিন হয় কয়টি আসল বাগ রয়েছে। LogLens একটি <strong>SHA-256 স্মার্ট ফিঙ্গারপ্রিন্ট ইঞ্জিন</strong> ব্যবহার করে এরর মেসেজের পরিবর্তনশীল অংশ (যেমন: ইউজার আইডি, টাইমস্ট্যাম্প, মেমোরি অ্যাড্রেস) বাদ দিয়ে একই ধরনের এররগুলোকে এক ছাতার নিচে গ্রুপ করে।
+            </p>
+
+            <div class="screenshot-frame">
+                <div class="browser-mockup-header">
+                    <span class="browser-dot red"></span>
+                    <span class="browser-dot yellow"></span>
+                    <span class="browser-dot green"></span>
+                    <span class="browser-address">https://your-domain.com/loglens/errors</span>
+                </div>
+                <img src="screenshots/03_errors.png" alt="LogLens Error Analysis" class="screenshot-img" onclick="openLightbox(this.src, 'Error Analysis & Fingerprinting')">
+            </div>
+            <div class="text-center text-muted small mt-1 mb-4"><i class="fa-solid fa-hand-pointer me-1"></i> স্ক্রিনশটটি বড় করে দেখতে ছবিতে ক্লিক করুন</div>
+
+            <h5 class="fw-bold text-light mt-4 mb-3"><i class="fa-solid fa-magnifying-glass-chart text-info me-2"></i>টেবিলের কলামসমূহের অর্থ</h5>
+            <ul>
+                <li><strong>Occurrences (বারসংখ্যা):</strong> এই নির্দিষ্ট বাগটি মোট কতবার ঘটেছে (যেমন: 45 times)।</li>
+                <li><strong>Exception & Message:</strong> এক্সেপশনের ক্লাস নাম (যেমন: <code class="text-danger">PDOException</code>, <code class="text-warning">StripePaymentException</code>) এবং এরর সারসংক্ষেপ।</li>
+                <li><strong>Location:</strong> প্রোজেক্টের কোন ফাইল এবং কত নম্বর লাইনে সমস্যাটি হয়েছে (যেমন: <code class="text-info">OrderController.php:48</code>)।</li>
+                <li><strong>First Seen / Last Seen:</strong> এররটি সর্বপ্রথম কখন দেখা গিয়েছিল এবং সর্বশেষ কখন ঘটেছে।</li>
+            </ul>
+        </section>
+
+        <!-- 5. HTTP পারফরম্যান্স -->
+        <section id="http" class="manual-card">
+            <div class="manual-section-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h3 class="fw-bold mb-1"><i class="fa-solid fa-bolt-lightning text-primary me-2"></i>৫. HTTP পারফরম্যান্স ও ল্যাটেন্সি মেট্রিক্স (HTTP Monitoring)</h3>
+                    <span class="text-muted small">রুট: <code class="text-primary">/loglens/http</code></span>
+                </div>
+                <span class="badge bg-primary section-badge">Latency Profiler</span>
+            </div>
+
+            <p>
+                আপনার লারাভেল এপিআই বা ওয়েব রুটের রেসপন্স টাইম, ট্রাফিক ভলিউম এবং এরর রেট ট্র্যাক করার জন্য এটি একটি নিবেদিত মনিটরিং পেজ। এটি প্রতিটি রিকোয়েস্টে একটি ইউনিক <code class="text-info">X-Correlation-ID</code> যুক্ত করে।
+            </p>
+
+            <div class="screenshot-frame">
+                <div class="browser-mockup-header">
+                    <span class="browser-dot red"></span>
+                    <span class="browser-dot yellow"></span>
+                    <span class="browser-dot green"></span>
+                    <span class="browser-address">https://your-domain.com/loglens/http</span>
+                </div>
+                <img src="screenshots/04_http.png" alt="LogLens HTTP Monitoring" class="screenshot-img" onclick="openLightbox(this.src, 'HTTP Performance & Latency')">
+            </div>
+            <div class="text-center text-muted small mt-1 mb-4"><i class="fa-solid fa-hand-pointer me-1"></i> স্ক্রিনশটটি বড় করে দেখতে ছবিতে ক্লিক করুন</div>
+
+            <h5 class="fw-bold text-light mt-4 mb-3"><i class="fa-solid fa-calculator text-success me-2"></i>ল্যাটেন্সি পার্সেন্টাইল (p50, p95, p99) কেন জরুরি?</h5>
+            <p>সাধারণ গড় (Average) অনেক সময় সঠিক চিত্র তুলে ধরে না। কারণ ১০০০টি ফাস্ট রিকোয়েস্টের মধ্যে ১টি খুব স্লো রিকোয়েস্ট থাকলে গড় মান বিকৃত হতে পারে।</p>
+            <ul>
+                <li><strong>Median (p50):</strong> ৫০% সাধারণ ইউজারের ক্ষেত্রে সাইট কত দ্রুত কাজ করছে।</li>
+                <li><strong>p95 Latency:</strong> ৯৫% ইউজার এই সময়ের চেয়ে দ্রুত রেসপন্স পাচ্ছে। শুধুমাত্র টপ ৫% ইউজার এর চেয়ে বেশি সময় ব্যয় করছে।</li>
+                <li><strong>p99 Latency:</strong> ৯৯% ইউজারের সন্তুষ্টির পরিমাপক। এটি অ্যাপ্লিকেশনের সবচেয়ে স্লো ১% প্রান্তিক রিকোয়েস্টকে নির্দেশ করে।</li>
+            </ul>
+
+            <h5 class="fw-bold text-light mt-4 mb-3"><i class="fa-solid fa-chart-pie text-warning me-2"></i>স্ট্যাটাস কোড ডিস্ট্রিবিউশন ও স্লো রুট টেবিল</h5>
+            <ul>
+                <li><strong>2xx, 3xx, 4xx, 5xx চার্ট:</strong> ট্রাফিকের মধ্যে কত শতাংশ সফল (<span class="text-success">2xx</span>), কত শতাংশ রিডাইরেক্ট (<span class="text-info">3xx</span>), কত শতাংশ ক্লায়েন্ট এরর (<span class="text-warning">4xx</span>), এবং কত শতাংশ সার্ভার ক্র্যাশ (<span class="text-danger">5xx</span>)।</li>
+                <li><strong>Top Slow Routes Table:</strong> যেসব রুটের রেসপন্স টাইম কনফিগার করা থ্রেশহোল্ড (যেমন <code class="text-danger">>500ms</code>) অতিক্রম করে, সেগুলো স্বয়ংক্রিয়ভাবে এই টেবিলে চিহ্নিত হয়।</li>
+            </ul>
+        </section>
+
+        <!-- 6. ডাটাবেস কুয়েরি প্রফাইল -->
+        <section id="database" class="manual-card">
+            <div class="manual-section-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h3 class="fw-bold mb-1"><i class="fa-solid fa-database text-success me-2"></i>৬. ডাটাবেস কুয়েরি প্রফাইল ও N+1 ডিটেকশন (Database Monitoring)</h3>
+                    <span class="text-muted small">রুট: <code class="text-success">/loglens/database</code></span>
+                </div>
+                <span class="badge bg-success section-badge">Zero-Query Safe</span>
+            </div>
+
+            <p>
+                লারাভেলের নেটিভ <code class="text-info">DB::listen</code> ইভেন্টকে প্যাসিভভাবে শুনে অ্যাপ্লিকেশনের সব SQL কুয়েরি পর্যবেক্ষণ করা হয়। <strong>LogLens নিজে কোনো অতিরিক্ত SQL কোয়েরি তৈরি করে না</strong>, ফলে প্রোডাকশন ডাটাবেসে ০% ওভারহেড নিশ্চিত হয়।
+            </p>
+
+            <div class="screenshot-frame">
+                <div class="browser-mockup-header">
+                    <span class="browser-dot red"></span>
+                    <span class="browser-dot yellow"></span>
+                    <span class="browser-dot green"></span>
+                    <span class="browser-address">https://your-domain.com/loglens/database</span>
+                </div>
+                <img src="screenshots/05_database.png" alt="LogLens Database Monitoring" class="screenshot-img" onclick="openLightbox(this.src, 'Database Query Profiler')">
+            </div>
+            <div class="text-center text-muted small mt-1 mb-4"><i class="fa-solid fa-hand-pointer me-1"></i> স্ক্রিনশটটি বড় করে দেখতে ছবিতে ক্লিক করুন</div>
+
+            <h5 class="fw-bold text-light mt-4 mb-3"><i class="fa-solid fa-shield-virus text-info me-2"></i>সিকিউর কুয়েরি নরমালাইজেশন ও বাইন্ডিংস মাস্কিং</h5>
+            <p>
+                নিরাপত্তার স্বার্থে ইউজারের পাসওয়ার্ড, টোকেন বা সেনসিটিভ তথ্য কখনোই মনিটরিং স্ক্রিনে প্রদর্শিত হয় না। প্রতিটি SQL স্টেটমেন্ট নরমালাইজ করে সংখ্যা ও স্ট্রিংকে <code class="text-warning">?</code> দিয়ে রিপ্লেস করা হয়:
+            </p>
+            <pre class="p-3 bg-dark rounded border border-secondary text-info"><code>-- আসল কুয়েরি:
+SELECT * FROM users WHERE email = 'secret@user.com' AND role_id = 4;
+
+-- LogLens নরমালাইজড ফিঙ্গারপ্রিন্ট:
+SELECT * FROM `users` WHERE `email` = ? AND `role_id` = ?;</code></pre>
+
+            <h5 class="fw-bold text-light mt-4 mb-3"><i class="fa-solid fa-triangle-exclamation text-warning me-2"></i>N+1 কুয়েরি হিওরিস্টিক অ্যালার্ট</h5>
+            <p>
+                যদি একই HTTP রিকোয়েস্টের ভেতর একই প্যাটার্নের কুয়েরি বারবার লুপ আকারে এক্সিকিউট হয় (যেমন: প্রতিটি ইউজারের প্রোফাইল আলাদা কুয়েরি দিয়ে ফেচ করা), তবে LogLens স্বয়ংক্রিয়ভাবে <strong>Potential N+1 Alert</strong> ফ্লাগ দেখাবে যাতে ডেভেলপাররা <code class="text-success">with()</code> বা Eager Loading যোগ করতে পারেন।
+            </p>
+        </section>
+
+        <!-- 7. অ্যাপাচি লাইভ মনিটর -->
+        <section id="apache" class="manual-card">
+            <div class="manual-section-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h3 class="fw-bold mb-1"><i class="fa-solid fa-server text-danger me-2"></i>৭. অ্যাপাচি mod_status লাইভ মনিটরিং (Apache Status)</h3>
+                    <span class="text-muted small">রুট: <code class="text-danger">/loglens/apache</code></span>
+                </div>
+                <span class="badge bg-danger section-badge">Daemon Cached</span>
+            </div>
+
+            <p>
+                ওয়েব সার্ভারের লাইভ হেলথ ট্র্যাক করতে অ্যাপাচির <code class="text-info">mod_status</code> মডিউলের সাথে সংযোগ স্থাপন করে। <strong>নিরাপত্তা গ্যারান্টি:</strong> কোনো ড্যাশবোর্ড ভিজিটর সরাসরি অ্যাপাচির স্ট্যাটাস ইউআরএলে হিট করতে পারে না। ব্যাকগ্রাউন্ডে একটি শেয়ার্ড ডেমন চলে যা ১-সেকেন্ড ইন্টারভালে স্ন্যাপশট ক্যাশে সেভ করে রাখে।
+            </p>
+
+            <div class="screenshot-frame">
+                <div class="browser-mockup-header">
+                    <span class="browser-dot red"></span>
+                    <span class="browser-dot yellow"></span>
+                    <span class="browser-dot green"></span>
+                    <span class="browser-address">https://your-domain.com/loglens/apache</span>
+                </div>
+                <img src="screenshots/06_apache.png" alt="LogLens Apache Monitoring" class="screenshot-img" onclick="openLightbox(this.src, 'Apache mod_status Live Monitoring')">
+            </div>
+            <div class="text-center text-muted small mt-1 mb-4"><i class="fa-solid fa-hand-pointer me-1"></i> স্ক্রিনশটটি বড় করে দেখতে ছবিতে ক্লিক করুন</div>
+
+            <h5 class="fw-bold text-light mt-4 mb-3"><i class="fa-solid fa-gauge text-primary me-2"></i>লাইভ রেট ও ওয়ার্কার স্কোরবোর্ড</h5>
+            <ul>
+                <li><strong>Requests Per Second (RPS):</strong> প্রতি সেকেন্ডে অ্যাপাচি কতগুলো নতুন রিকোয়েস্ট প্রসেস করছে।</li>
+                <li><strong>Bytes Per Second (BPS):</strong> প্রতি সেকেন্ডে নেটওয়ার্ক দিয়ে কত কিলোবাইট ডেটা আদান-প্রদান হচ্ছে।</li>
+                <li><strong>Worker Scoreboard:</strong> মোট কয়টি ওয়ার্কার বর্তমানে বিজি (Writing, Reading, KeepAlive) এবং কয়টি ওয়ার্কার আইডল (Waiting for connection) অবস্থায় প্রস্তুত আছে।</li>
+            </ul>
+
+            <div class="tip-box">
+                <strong><i class="fa-solid fa-terminal me-1"></i> ব্যাকগ্রাউন্ড ডেমন চালুর কমান্ড:</strong><br>
+                টার্মিনালে রান করুন: <code class="text-light">php artisan loglens:apache-collect</code> (অথবা Supervisor দিয়ে ব্যাকগ্রাউন্ড প্রসেস হিসেবে চালু রাখুন)।
+            </div>
+        </section>
+
+        <!-- 8. সার্ভার হেলথ ও কন্টেইনার -->
+        <section id="server" class="manual-card">
+            <div class="manual-section-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h3 class="fw-bold mb-1"><i class="fa-solid fa-microchip text-warning me-2"></i>৮. সার্ভার হেলথ ও কন্টেইনার টেলিমেট্রি (Server Health)</h3>
+                    <span class="text-muted small">রুট: <code class="text-warning">/loglens/server-health</code></span>
+                </div>
+                <span class="badge bg-warning text-dark section-badge">Host & Docker</span>
+            </div>
+
+            <p>
+                হোস্ট সার্ভারের হার্ডওয়্যার রিসোর্স এবং লিনাক্স ডকার কন্টেইনারের মেমোরি লিমিট পর্যবেক্ষণ করে। <strong>নিরাপত্তা নীতি:</strong> এটি কোনো ইউজার ইনপুট দিয়ে শেল কমান্ড চালায় না। লিনাক্সের <code class="text-info">/proc/stat</code>, <code class="text-info">/proc/meminfo</code> এবং <code class="text-info">sys/fs/cgroup</code> ফাইল সরাসরি পড়ে।
+            </p>
+
+            <div class="screenshot-frame">
+                <div class="browser-mockup-header">
+                    <span class="browser-dot red"></span>
+                    <span class="browser-dot yellow"></span>
+                    <span class="browser-dot green"></span>
+                    <span class="browser-address">https://your-domain.com/loglens/server-health</span>
+                </div>
+                <img src="screenshots/07_server_health.png" alt="LogLens Server Health" class="screenshot-img" onclick="openLightbox(this.src, 'Server Health & Telemetry')">
+            </div>
+            <div class="text-center text-muted small mt-1 mb-4"><i class="fa-solid fa-hand-pointer me-1"></i> স্ক্রিনশটটি বড় করে দেখতে ছবিতে ক্লিক করুন</div>
+
+            <h5 class="fw-bold text-light mt-4 mb-3"><i class="fa-solid fa-server text-info me-2"></i>টেলিমেট্রি মেট্রিক্সের তালিকা</h5>
+            <ul>
+                <li><strong>CPU Load Average:</strong> বিগত ১ মিনিট, ৫ মিনিট এবং ১৫ মিনিটের গড় সিস্টেম লোড।</li>
+                <li><strong>RAM & Swap Allocation:</strong> সর্বমোট মেমোরি, ব্যবহৃত মেমোরি, ফ্রি স্পেস, এবং সোয়াপ মেমোরি ব্যবহার।</li>
+                <li><strong>Disk Mount Allocation:</strong> সার্ভারের রুট পার্টিশন (<code class="text-info">/</code>) বা মাউন্ট পয়েন্টগুলোতে কত জিবি খালি আছে এবং ফুল হওয়ার ঝুঁকি আছে কি না।</li>
+                <li><strong>Docker Cgroups v1 & v2:</strong> যদি অ্যাপটি ডকার কন্টেইনারে চলে, তবে কন্টেইনারের জন্য নির্ধারিত আসল মেমোরি সিলিং ট্র্যাক করে।</li>
+            </ul>
+        </section>
+
+        <!-- 9. কিউ ব্যাকগ্রাউন্ড জব -->
+        <section id="queue" class="manual-card">
+            <div class="manual-section-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h3 class="fw-bold mb-1"><i class="fa-solid fa-list-check text-info me-2"></i>৯. কিউ ব্যাকগ্রাউন্ড জব টেলিমেট্রি (Queue Monitoring)</h3>
+                    <span class="text-muted small">রুট: <code class="text-info">/loglens/queue</code></span>
+                </div>
+                <span class="badge bg-info text-dark section-badge">Async Telemetry</span>
+            </div>
+
+            <p>
+                লারাভেলের ব্যাকগ্রাউন্ড ওয়ার্কারদের ট্র্যাক করার জন্য নিবেদিত ড্যাশবোর্ড। কিউতে প্রসেস হওয়া জব, ব্যর্থ হওয়া জব (Failed Jobs), এবং অস্বাভাবিক সময় নেওয়া জবগুলো (Long-running Jobs) পর্যবেক্ষণ করা যায়।
+            </p>
+
+            <div class="screenshot-frame">
+                <div class="browser-mockup-header">
+                    <span class="browser-dot red"></span>
+                    <span class="browser-dot yellow"></span>
+                    <span class="browser-dot green"></span>
+                    <span class="browser-address">https://your-domain.com/loglens/queue</span>
+                </div>
+                <img src="screenshots/08_queue.png" alt="LogLens Queue Monitoring" class="screenshot-img" onclick="openLightbox(this.src, 'Queue Telemetry & Job Durations')">
+            </div>
+            <div class="text-center text-muted small mt-1 mb-4"><i class="fa-solid fa-hand-pointer me-1"></i> স্ক্রিনশটটি বড় করে দেখতে ছবিতে ক্লিক করুন</div>
+
+            <h5 class="fw-bold text-light mt-4 mb-3"><i class="fa-solid fa-stopwatch text-danger me-2"></i>লং-রানিং জব ও ফেইল্ড জব শনাক্তকরণ</h5>
+            <ul>
+                <li><strong>Long-Running Threshold:</strong> ডিফল্টভাবে যেসব জব সম্পন্ন হতে ৫ সেকেন্ডের বেশি সময় নেয় (<code class="text-warning">>5000ms</code>), সেগুলো স্বয়ংক্রিয়ভাবে লং-রানিং হিসেবে মার্ক করা হয়।</li>
+                <li><strong>Failed Job Diagnostics:</strong> কোনো জব ফেইল করলে কোন এক্সেপশন হয়েছে (<code class="text-danger">StripeCardException</code>, <code class="text-danger">TimeoutException</code>) এবং কোন কিউতে ঘটেছে তা সরাসরি প্রদর্শন করে।</li>
+            </ul>
+        </section>
+
+        <!-- 10. কনসোল শিডিউলার -->
+        <section id="scheduler" class="manual-card">
+            <div class="manual-section-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h3 class="fw-bold mb-1"><i class="fa-solid fa-clock text-primary me-2"></i>১০. কনসোল শিডিউলার মনিটর (Scheduler Observability)</h3>
+                    <span class="text-muted small">রুট: <code class="text-primary">/loglens/scheduler</code></span>
+                </div>
+                <span class="badge bg-primary section-badge">Cron Engine</span>
+            </div>
+
+            <p>
+                লারাভেলের শিডিউল করা ক্রন জবগুলো (<code class="text-info">routes/console.php</code> বা <code class="text-info">Kernel.php</code>) সময়মতো রান হচ্ছে কি না এবং কোনো টাস্ক ফেইল বা স্কিপ হয়েছে কি না তা পর্যবেক্ষণ করে।
+            </p>
+
+            <div class="screenshot-frame">
+                <div class="browser-mockup-header">
+                    <span class="browser-dot red"></span>
+                    <span class="browser-dot yellow"></span>
+                    <span class="browser-dot green"></span>
+                    <span class="browser-address">https://your-domain.com/loglens/scheduler</span>
+                </div>
+                <img src="screenshots/09_scheduler.png" alt="LogLens Scheduler Monitoring" class="screenshot-img" onclick="openLightbox(this.src, 'Scheduler Monitoring & Mutex Overlaps')">
+            </div>
+            <div class="text-center text-muted small mt-1 mb-4"><i class="fa-solid fa-hand-pointer me-1"></i> স্ক্রিনশটটি বড় করে দেখতে ছবিতে ক্লিক করুন</div>
+
+            <h5 class="fw-bold text-light mt-4 mb-3"><i class="fa-solid fa-arrows-split-up-and-left text-warning me-2"></i>মিউটেক্স ওভারল্যাপ ডিটেকশন (withoutOverlapping)</h5>
+            <p>
+                অনেক সময় একটি শিডিউল করা জব শেষ হতে অতিরিক্ত সময় লাগে, যার ফলে পরবর্তী শিডিউলের সময় লারাভেলের <code class="text-warning">withoutOverlapping()</code> লক এটিকে স্কিপ করে দেয়। LogLens এই ঘটনাগুলোকে চিহ্নিত করে এবং <strong>Mutex Overlap Skipped</strong> ওয়ার্নিং প্রদর্শন করে যাতে সার্ভার হ্যাং হওয়া এড়ানো যায়।
+            </p>
+        </section>
+
+        <!-- 11. সিকিউরিটি ও ডেস্ট্রাক্টিভ অ্যাকশন -->
+        <section id="security" class="manual-card">
+            <div class="manual-section-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h3 class="fw-bold mb-1"><i class="fa-solid fa-shield-halved text-danger me-2"></i>১১. সিকিউরিটি ও ডেস্ট্রাক্টিভ অ্যাকশন কনফার্মেশন</h3>
+                    <span class="text-muted small">নিরাপত্তা স্তর ও পারমিশন নীতি</span>
+                </div>
+                <span class="badge bg-danger section-badge">Security Guard</span>
+            </div>
+
+            <p>
+                লগ ফাইল ট্রাঙ্কেট করা (Clear) বা রিটেনশন ক্লিনআপ করার মতো পরিবর্তনশীল অ্যাকশনগুলো অত্যন্ত সংবেদনশীল। অসাবধানতাবশত যাতে কোনো গুরুত্বপূর্ণ অডিট লগ মুছে না যায়, তার জন্য LogLens-এ <strong>মাল্টি-টিয়ার সিকিউরিটি গার্ড</strong> যুক্ত রয়েছে।
+            </p>
+
+            <div class="screenshot-frame">
+                <div class="browser-mockup-header">
+                    <span class="browser-dot red"></span>
+                    <span class="browser-dot yellow"></span>
+                    <span class="browser-dot green"></span>
+                    <span class="browser-address">https://your-domain.com/loglens/logs (Destructive Confirmation Modal)</span>
+                </div>
+                <img src="screenshots/10_destructive_modal.png" alt="Destructive Confirmation Modal" class="screenshot-img" onclick="openLightbox(this.src, 'Safe Destructive Confirmation Modal')">
+            </div>
+            <div class="text-center text-muted small mt-1 mb-4"><i class="fa-solid fa-hand-pointer me-1"></i> স্ক্রিনশটটি বড় করে দেখতে ছবিতে ক্লিক করুন</div>
+
+            <h5 class="fw-bold text-light mt-4 mb-3"><i class="fa-solid fa-lock text-info me-2"></i>৪-স্তরের ডেস্ট্রাক্টিভ সুরক্ষা চেইন</h5>
+            <ol class="text-muted">
+                <li><strong>কনফিগারেশন গেট:</strong> <code class="text-light">config/loglens.php</code>-তে <code class="text-danger">'allow_destructive_actions' => true</code> না থাকলে ব্যাকএন্ড স্বয়ংক্রিয়ভাবে রিকোয়েস্ট ব্লক করে দেবে (403 Forbidden)।</li>
+                <li><strong>ডেস্ট্রাক্টিভ কলব্যাক অথোরাইজেশন:</strong> সাধারণ অ্যাডমিন দেখতে পারলেও ডিলিট করতে পারবে কি না তার জন্য আলাদা গেট <code class="text-info">LogLens::destructiveAuth(...)</code> পাস করতে হবে।</li>
+                <li><strong>CSRF প্রোটেকশন:</strong> সমস্ত স্টেট-চেঞ্জিং এন্ডপয়েন্টে লারাভেলের ভ্যালিড CSRF টোকেন বাধ্যতামূলক।</li>
+                <li><strong>UI টু-স্টেপ কনফার্মেশন:</strong> মোডালে থাকা <em>"I understand this action is irreversible"</em> চেকবক্সে টিক না দেওয়া পর্যন্ত লাল রঙের <strong>"Yes, Clear File"</strong> বাটনটি ডিজেবল থাকবে।</li>
+            </ol>
+
+            <div class="warning-box">
+                <strong><i class="fa-solid fa-triangle-exclamation me-1"></i> সতর্কবার্তা:</strong> লগ ফাইল ক্লিয়ার করলে ফাইলের ভেতরের তথ্য মুছে 0 Bytes হয়ে যায়। এটি রিকভার করা সম্ভব নয়। প্রোডাকশনে সর্বদা ডেস্ট্রাক্টিভ অ্যাকশন শুধুমাত্র সুপার অ্যাডমিনের জন্য অনুমোদিত রাখুন।
+            </div>
+        </section>
+
+        <!-- 12. কনফিগারেশন চেকলিস্ট -->
+        <section id="config-guide" class="manual-card">
+            <div class="manual-section-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h3 class="fw-bold mb-1"><i class="fa-solid fa-sliders text-success me-2"></i>১২. .env কনফিগারেশন চেকলিস্ট ও রেফারেন্স</h3>
+                    <span class="text-muted small">প্রোডাকশন রেডি পরিবেশ প্রস্তুতকরণ</span>
+                </div>
+                <span class="badge bg-success section-badge">Cheat Sheet</span>
+            </div>
+
+            <p>আপনার প্রোজেক্টের <code class="text-info">.env</code> ফাইলে নিচের ভেরিয়েবলগুলো দিয়ে প্রতিটি মডিউল আলাদাভাবে কন্ট্রোল করা যায়:</p>
+
+            <pre class="p-3 bg-dark rounded border border-secondary text-light"><code># ==========================================
+# LogLens Master Switch & Configuration
+# ==========================================
+LOGLENS_ENABLED=true
+LOGLENS_PATH=loglens
+
+# Monitoring Modules Toggle
+LOGLENS_DB_MONITORING=true
+LOGLENS_HTTP_MONITORING=true
+LOGLENS_APACHE_MONITORING=false
+LOGLENS_SYSTEM_MONITORING=true
+LOGLENS_QUEUE_MONITORING=true
+LOGLENS_SCHEDULER_MONITORING=true
+LOGLENS_ALERTS_ENABLED=true
+
+# Security & Destructive Actions
+LOGLENS_ALLOW_DESTRUCTIVE=false
+
+# Thresholds
+LOGLENS_SLOW_REQUEST_THRESHOLD_MS=1000
+LOGLENS_SLOW_QUERY_THRESHOLD_MS=500
+LOGLENS_LONG_RUNNING_JOB_THRESHOLD_MS=5000</code></pre>
+
+            <h5 class="fw-bold text-light mt-4 mb-3"><i class="fa-solid fa-code text-info me-2"></i>AppServiceProvider-এ অ্যাক্সেস রেস্ট্রিকশন কোড</h5>
+            <pre class="p-3 bg-dark rounded border border-secondary text-light"><code>use MehrabHossain\LogLens\Facades\LogLens;
+
+public function boot(): void
+{
+    // ড্যাশবোর্ড দেখার অনুমতি (Read Only)
+    LogLens::auth(function ($request) {
+        return app()->environment('local') ||
+               in_array($request->user()?->email, [
+                   'admin@yourdomain.com',
+                   'devops@yourdomain.com',
+               ]);
+    });
+
+    // লগ ফাইল মোছার অনুমতি (Destructive Action)
+    LogLens::destructiveAuth(function ($request) {
+        return in_array($request->user()?->email, [
+            'lead-architect@yourdomain.com',
+        ]);
+    });
+}</code></pre>
+        </section>
+
+        <!-- Footer -->
+        <footer class="text-center text-muted py-4 border-top border-secondary-subtle small">
+            LogLens v1.0.0 &bull; Developer-Focused Monitoring for Laravel &bull; Crafted by Mehrab Hossain
+        </footer>
+
+    </main>
+</div>
+
+<!-- Screenshot Lightbox Modal -->
+<div class="modal fade" id="screenshotModal" tabindex="-1" aria-labelledby="modalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content bg-dark text-light border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title" id="modalTitle">Screenshot Preview</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center p-2">
+                <img src="" id="modalImg" class="modal-img-preview" alt="Preview">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bootstrap 5 JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    // Lightbox modal opener
+    function openLightbox(src, title) {
+        document.getElementById('modalImg').src = src;
+        document.getElementById('modalTitle').innerText = title;
+        var modal = new bootstrap.Modal(document.getElementById('screenshotModal'));
+        modal.show();
+    }
+
+    // Dynamic search filter for sidebar and sections
+    document.getElementById('manualSearch').addEventListener('input', function(e) {
+        var query = e.target.value.toLowerCase().trim();
+        var links = document.querySelectorAll('#sidebarNav .nav-item-link');
+        var cards = document.querySelectorAll('.manual-card');
+
+        links.forEach(function(link) {
+            var text = link.innerText.toLowerCase();
+            if (text.includes(query) || query === '') {
+                link.style.display = 'flex';
+            } else {
+                link.style.display = 'none';
+            }
+        });
+
+        cards.forEach(function(card) {
+            var text = card.innerText.toLowerCase();
+            if (text.includes(query) || query === '') {
+                card.style.display = 'block';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    });
+
+    // Active link highlighting on scroll
+    window.addEventListener('scroll', function() {
+        var sections = document.querySelectorAll('section');
+        var scrollPos = window.scrollY + 100;
+
+        sections.forEach(function(sec) {
+            var top = sec.offsetTop;
+            var height = sec.offsetHeight;
+            var id = sec.getAttribute('id');
+            if (scrollPos >= top && scrollPos < top + height) {
+                document.querySelectorAll('#sidebarNav .nav-item-link').forEach(function(link) {
+                    link.classList.remove('active');
+                    if (link.getAttribute('href') === '#' + id) {
+                        link.classList.add('active');
+                    }
+                });
+            }
+        });
+    });
+</script>
+
+</body>
+</html>
