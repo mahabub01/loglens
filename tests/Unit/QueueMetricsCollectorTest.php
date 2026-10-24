@@ -7,6 +7,7 @@ use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Queue\Events\Looping;
+use Illuminate\Queue\Events\WorkerStopping;
 use Illuminate\Support\Facades\Event;
 use MehrabHossain\LogLens\Contracts\SharedMetricsStorageInterface;
 use MehrabHossain\LogLens\Services\QueueMetricsCollector;
@@ -170,7 +171,6 @@ class QueueMetricsCollectorTest extends TestCase
         $this->assertEquals(50.0, $summary['failure_rate_percent']);
         $this->assertGreaterThan(0, $summary['total_duration_ms']);
         $this->assertGreaterThan(0, $summary['avg_duration_ms']);
-        $this->assertTrue($summary['is_alive']);
         $this->assertCount(1, $summary['recent_processed']);
         $this->assertSame('App\\Jobs\\ProcessInvoice', $summary['recent_processed'][0]['name']);
         $this->assertCount(1, $summary['recent_failed']);
@@ -225,53 +225,140 @@ class QueueMetricsCollectorTest extends TestCase
     public function test_idle_loop_heartbeat_is_throttled_per_worker(): void
     {
         config(['loglens.queue.heartbeat_interval_seconds' => 10]);
-        $worker = new QueueMetricsCollector();
+        $worker = new QueueMetricsCollector(workerId: 'web01:100');
         $store = app(SharedMetricsStorageInterface::class);
 
         $worker->handleWorkerLooping(new Looping('database', 'default'));
-        $first = $store->get('heartbeat:queue');
+        $first = $store->get('queue:worker:web01:100')['last_seen'];
 
-        // Polls every ~3s must not rewrite the heartbeat inside the 10s interval
+        // Polls every ~3s must not rewrite the worker state inside the 10s interval
+        usleep(2000);
         $worker->handleWorkerLooping(new Looping('database', 'default'));
         $worker->handleWorkerLooping(new Looping('database', 'default'));
 
-        $this->assertSame($first, $store->get('heartbeat:queue'));
+        $this->assertSame($first, $store->get('queue:worker:web01:100')['last_seen']);
+    }
+
+    public function test_lists_each_worker_with_its_state(): void
+    {
+        $workerA = new QueueMetricsCollector(workerId: 'web01:100');
+        $workerB = new QueueMetricsCollector(workerId: 'web01:101');
+
+        $workerA->handleWorkerLooping(new Looping('database', 'default'));
+        $workerB->handleWorkerLooping(new Looping('redis', 'emails,default'));
+
+        $job = $this->createMockJob('job-1', 'App\\Jobs\\SendInvoiceMail', 'emails');
+        $workerA->handleJobProcessing(new JobProcessing('database', $job));
+        $workerA->handleJobProcessed(new JobProcessed('database', $job));
+        $workerB->handleJobProcessing(new JobProcessing('redis', $this->createMockJob('job-2', 'App\\Jobs\\GenerateReport', 'emails')));
+
+        $summary = (new QueueMetricsCollector())->getSummary();
+
+        $this->assertSame(2, $summary['workers_online']);
+        $this->assertSame('running', $summary['status']);
+        $this->assertSame(1, $summary['active_jobs_count']);
+
+        [$a, $b] = $summary['workers'];
+        $this->assertSame('web01:100', $a['id']);
+        $this->assertSame('idle', $a['status']);
+        $this->assertSame('default', $a['queue']);
+        $this->assertSame('database', $a['connection']);
+        $this->assertSame(1, $a['processed']);
+        $this->assertNull($a['current_job']);
+        $this->assertGreaterThan(0, $a['memory_mb']);
+
+        $this->assertSame('web01:101', $b['id']);
+        $this->assertSame('busy', $b['status']);
+        $this->assertSame('emails,default', $b['queue']);
+        $this->assertSame('App\\Jobs\\GenerateReport', $b['current_job']);
+        $this->assertNotNull($b['busy_since']);
     }
 
     public function test_long_running_job_shows_busy_instead_of_off(): void
     {
-        // No throttle: the simulated job "lasts" longer than the heartbeat interval
-        config(['loglens.queue.heartbeat_interval_seconds' => 0]);
-        $worker = new QueueMetricsCollector();
         $store = app(SharedMetricsStorageInterface::class);
+        $worker = new QueueMetricsCollector(workerId: 'web01:100');
         $job = $this->createMockJob('job-long', 'App\\Jobs\\HeavyExport', 'reports');
 
+        $worker->handleWorkerLooping(new Looping('database', 'reports'));
         $worker->handleJobProcessing(new JobProcessing('database', $job));
 
-        // Job has been running for 5 minutes: the worker stopped looping, heartbeat went stale
-        $store->set('heartbeat:queue', microtime(true) - 300, 600);
+        // Job has been running for 5 minutes: the worker stopped looping, its heartbeat went stale
+        $state = $store->get('queue:worker:web01:100');
+        $state['last_seen'] = microtime(true) - 300;
+        $state['busy_since'] = microtime(true) - 300;
+        $store->set('queue:worker:web01:100', $state, 900);
 
         $summary = (new QueueMetricsCollector())->getSummary();
         $this->assertSame('busy', $summary['status']);
         $this->assertTrue($summary['is_alive']);
         $this->assertNotNull($summary['busy_since']);
+        $this->assertSame('App\\Jobs\\HeavyExport', $summary['workers'][0]['current_job']);
 
         $worker->handleJobProcessed(new JobProcessed('database', $job));
 
         $summary = (new QueueMetricsCollector())->getSummary();
         $this->assertSame('running', $summary['status']);
         $this->assertNull($summary['busy_since']);
+        $this->assertSame('idle', $summary['workers'][0]['status']);
     }
 
-    public function test_worker_is_off_when_no_heartbeat_and_not_busy(): void
+    public function test_worker_is_off_when_heartbeat_is_stale_and_not_busy(): void
     {
-        config(['loglens.queue.heartbeat_window_seconds' => 60]);
-        app(SharedMetricsStorageInterface::class)->set('heartbeat:queue', microtime(true) - 120, 600);
+        $store = app(SharedMetricsStorageInterface::class);
+        (new QueueMetricsCollector(workerId: 'web01:100'))->handleWorkerLooping(new Looping('database', 'default'));
+
+        // Worker was killed 2 minutes ago without a clean shutdown
+        $state = $store->get('queue:worker:web01:100');
+        $state['last_seen'] = microtime(true) - 120;
+        $store->set('queue:worker:web01:100', $state, 600);
 
         $summary = (new QueueMetricsCollector())->getSummary();
         $this->assertSame('off', $summary['status']);
         $this->assertFalse($summary['is_alive']);
+        $this->assertSame(0, $summary['workers_online']);
         $this->assertNull($summary['last_heartbeat_at']);
+    }
+
+    public function test_stopping_worker_is_removed_immediately_without_affecting_others(): void
+    {
+        $workerA = new QueueMetricsCollector(workerId: 'web01:100');
+        $workerB = new QueueMetricsCollector(workerId: 'web01:101');
+        $workerA->handleWorkerLooping(new Looping('database', 'default'));
+        $workerB->handleWorkerLooping(new Looping('database', 'default'));
+
+        $workerA->handleWorkerStopping(new WorkerStopping(0));
+
+        $summary = (new QueueMetricsCollector())->getSummary();
+        $this->assertSame(1, $summary['workers_online']);
+        $this->assertSame('web01:101', $summary['workers'][0]['id']);
+        $this->assertSame('running', $summary['status']);
+    }
+
+    public function test_jobs_run_without_worker_loop_do_not_register_a_worker(): void
+    {
+        // QUEUE_CONNECTION=sync runs jobs inline in a web request: no queue:work exists
+        $job = $this->createMockJob('job-sync', 'App\\Jobs\\Inline', 'default');
+        $this->collector->handleJobProcessing(new JobProcessing('sync', $job));
+        $this->collector->handleJobProcessed(new JobProcessed('sync', $job));
+
+        $summary = (new QueueMetricsCollector())->getSummary();
+        $this->assertSame(1, $summary['processed_count']);
+        $this->assertSame('off', $summary['status']);
+        $this->assertSame(0, $summary['workers_online']);
+    }
+
+    public function test_reports_expected_worker_count(): void
+    {
+        config(['loglens.queue.expected_workers' => '3']);
+        (new QueueMetricsCollector(workerId: 'web01:100'))->handleWorkerLooping(new Looping('database', 'default'));
+
+        $summary = (new QueueMetricsCollector())->getSummary();
+        $this->assertSame(3, $summary['expected_workers']);
+        $this->assertSame(1, $summary['workers_online']);
+
+        config(['loglens.queue.expected_workers' => null]);
+        $this->assertNull((new QueueMetricsCollector())->getSummary()['expected_workers']);
     }
 
     public function test_disabled_collector_ignores_events(): void

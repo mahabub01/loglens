@@ -41,6 +41,25 @@ class CacheMetricsStoreTest extends TestCase
         $this->assertEmpty($store->getHistory('runs'));
     }
 
+    public function test_member_set_tracks_prunes_and_removes_members(): void
+    {
+        $store = new CacheMetricsStore(prefix: 'loglens:test');
+
+        $store->touchMember('workers', 'web01:100', 60);
+        (new CacheMetricsStore(prefix: 'loglens:test'))->touchMember('workers', 'web01:101', 60);
+
+        $members = $store->getMembers('workers', 60);
+        $this->assertSame(['web01:100', 'web01:101'], array_keys($members));
+        $this->assertIsFloat($members['web01:100']);
+
+        // A member last seen 2 minutes ago falls outside a 60s window
+        Cache::put('loglens:test:set:workers', ['web01:100' => microtime(true), 'web01:102' => microtime(true) - 120], 600);
+        $this->assertSame(['web01:100'], array_keys($store->getMembers('workers', 60)));
+
+        $store->removeMember('workers', 'web01:100');
+        $this->assertSame([], $store->getMembers('workers', 60));
+    }
+
     public function test_ttl_defaults_to_metrics_config(): void
     {
         config(['loglens.metrics.ttl' => 42]);

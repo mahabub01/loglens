@@ -155,7 +155,10 @@ class QueueMonitoringTest extends TestCase
         event(new Looping('database', 'default'));
 
         $this->get('/loglens/queue')
-            ->assertSee('Worker Running')
-            ->assertDontSee('Worker Off');
+            ->assertSee('Worker Running (1 online)')
+            ->assertDontSee('Worker Off')
+            ->assertSee('Queue Workers')
+            ->assertSee(gethostname() . ':' . getmypid())
+            ->assertSee('Idle');
     }
 }

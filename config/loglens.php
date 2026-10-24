@@ -197,6 +197,8 @@ return [
         'heartbeat_window_seconds' => 60,
         // A job that started within this window keeps the worker "busy" (match your --timeout)
         'busy_window_seconds' => env('LOGLENS_QUEUE_BUSY_WINDOW', 900),
+        // How many workers should be running (e.g. supervisor numprocs); null disables the check
+        'expected_workers' => env('LOGLENS_QUEUE_EXPECTED_WORKERS'),
     ],
 
     /*

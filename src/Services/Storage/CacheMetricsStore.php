@@ -2,6 +2,7 @@
 
 namespace MehrabHossain\LogLens\Services\Storage;
 
+use Illuminate\Contracts\Cache\LockProvider;
 use Illuminate\Support\Facades\Cache;
 use MehrabHossain\LogLens\Contracts\SharedMetricsStorageInterface;
 use Throwable;
@@ -115,6 +116,75 @@ class CacheMetricsStore implements SharedMetricsStorageInterface
         } catch (Throwable) {
             // Ignore store failures
         }
+    }
+
+    public function touchMember(string $set, string $member, int $maxAgeSeconds): void
+    {
+        try {
+            $this->withLock("set:{$set}", function () use ($set, $member, $maxAgeSeconds) {
+                $members = $this->freshMembers($set, $maxAgeSeconds);
+                $members[$member] = microtime(true);
+                Cache::store($this->storeName)->put("{$this->prefix}:set:{$set}", $members, $this->ttl);
+            });
+        } catch (Throwable) {
+            // Drop on failure (e.g. lock timeout); the member is re-added on its next touch
+        }
+    }
+
+    public function getMembers(string $set, int $maxAgeSeconds): array
+    {
+        try {
+            return $this->freshMembers($set, $maxAgeSeconds);
+        } catch (Throwable) {
+            return [];
+        }
+    }
+
+    public function removeMember(string $set, string $member): void
+    {
+        try {
+            $this->withLock("set:{$set}", function () use ($set, $member) {
+                $key = "{$this->prefix}:set:{$set}";
+                $members = Cache::store($this->storeName)->get($key, []);
+                if (is_array($members) && array_key_exists($member, $members)) {
+                    unset($members[$member]);
+                    Cache::store($this->storeName)->put($key, $members, $this->ttl);
+                }
+            });
+        } catch (Throwable) {
+            // Ignore store failures
+        }
+    }
+
+    /**
+     * @return array<string, float>
+     */
+    protected function freshMembers(string $set, int $maxAgeSeconds): array
+    {
+        $members = Cache::store($this->storeName)->get("{$this->prefix}:set:{$set}", []);
+        if (! is_array($members)) {
+            return [];
+        }
+
+        $cutoff = microtime(true) - $maxAgeSeconds;
+
+        return array_filter($members, fn ($seenAt) => (float) $seenAt >= $cutoff);
+    }
+
+    /**
+     * Serialize a read-modify-write across processes when the cache driver supports locks.
+     */
+    protected function withLock(string $name, callable $callback): void
+    {
+        $cache = Cache::store($this->storeName);
+
+        if (! $cache->getStore() instanceof LockProvider) {
+            $callback();
+
+            return;
+        }
+
+        $cache->lock("{$this->prefix}:lock:{$name}", 5)->block(2, $callback);
     }
 
     public function recordHeartbeat(string $collectorName, int $ttlSeconds = 60): void

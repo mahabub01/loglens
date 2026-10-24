@@ -132,6 +132,63 @@ class RedisMetricsStoreTest extends TestCase
         $this->assertEmpty($store->getHistory('cpu'));
     }
 
+    public function test_member_set_uses_sorted_set_commands(): void
+    {
+        $mockConnection = new class {
+            /** @var array<string, array<string, float>> */
+            public array $zsets = [];
+
+            public function zadd(string $key, array $dictionary): int
+            {
+                foreach ($dictionary as $member => $score) {
+                    $this->zsets[$key][$member] = (float) $score;
+                }
+                return count($dictionary);
+            }
+
+            public function zremrangebyscore(string $key, string $min, string $max): int
+            {
+                $before = count($this->zsets[$key] ?? []);
+                $this->zsets[$key] = array_filter($this->zsets[$key] ?? [], fn ($s) => $s > (float) $max);
+                return $before - count($this->zsets[$key]);
+            }
+
+            public function zrangebyscore(string $key, string $min, string $max, array $options = []): array
+            {
+                return array_filter($this->zsets[$key] ?? [], fn ($s) => $s >= (float) $min);
+            }
+
+            public function zrem(string $key, string $member): int
+            {
+                unset($this->zsets[$key][$member]);
+                return 1;
+            }
+
+            public function expire(string $key, int $ttl): bool
+            {
+                return true;
+            }
+        };
+
+        Redis::shouldReceive('connection')
+            ->with('default')
+            ->andReturn($mockConnection);
+
+        $store = new RedisMetricsStore(connection: 'default', prefix: 'loglens:test');
+
+        $store->touchMember('workers', 'web01:100', 60);
+        $store->touchMember('workers', 'web01:101', 60);
+        $this->assertSame(['web01:100', 'web01:101'], array_keys($store->getMembers('workers', 60)));
+
+        // Stale members are pruned on the next touch
+        $mockConnection->zsets['loglens:test:set:workers']['web01:102'] = microtime(true) - 120;
+        $store->touchMember('workers', 'web01:100', 60);
+        $this->assertArrayNotHasKey('web01:102', $store->getMembers('workers', 600));
+
+        $store->removeMember('workers', 'web01:100');
+        $this->assertSame(['web01:101'], array_keys($store->getMembers('workers', 60)));
+    }
+
     public function test_detects_stale_metrics_and_expired_heartbeats(): void
     {
         $mockConnection = new class {

@@ -6,6 +6,7 @@ use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Queue\Events\Looping;
+use Illuminate\Queue\Events\WorkerStopping;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
 use MehrabHossain\LogLens\Contracts\QueueMetricsCollectorInterface;
@@ -26,15 +27,40 @@ class QueueMetricsCollector implements QueueMetricsCollectorInterface
     protected const KEY_LONG_RUNNING_COUNT = 'queue:long_running_count';
     protected const KEY_RECENT_PROCESSED = 'queue:recent_processed';
     protected const KEY_RECENT_FAILED = 'queue:recent_failed';
-    protected const KEY_BUSY_SINCE = 'queue:busy_since';
-    protected const HEARTBEAT = 'queue';
+
+    /**
+     * Worker registry: each worker writes its own state key, and the set lists worker ids
+     * because cache stores cannot enumerate keys.
+     */
+    protected const WORKER_SET = 'queue:workers';
+    protected const KEY_WORKER_PREFIX = 'queue:worker:';
+    protected const REGISTRY_INTERVAL_SECONDS = 60;
 
     protected bool $registered = false;
 
     /**
-     * When this worker process last wrote its heartbeat (throttles idle-loop writes).
+     * Whether this process is a queue worker daemon (Looping fired). Jobs run inline
+     * by the sync driver inside web requests must not register phantom workers.
+     */
+    protected bool $isWorkerProcess = false;
+
+    protected string $workerId;
+    protected ?float $workerStartedAt = null;
+    protected ?string $workerConnection = null;
+    protected ?string $workerQueue = null;
+    protected int $workerProcessed = 0;
+    protected int $workerFailed = 0;
+
+    /**
+     * @var array{name: string, started_at: float}|null
+     */
+    protected ?array $currentJob = null;
+
+    /**
+     * When this worker last wrote its state / touched the registry (throttles idle-loop writes).
      */
     protected float $lastHeartbeatWrite = 0.0;
+    protected float $lastRegistryTouch = 0.0;
 
     /**
      * @var array<string, float> Active job start timestamps keyed by job identifier (Processing and Processed fire in the same worker)
@@ -48,9 +74,10 @@ class QueueMetricsCollector implements QueueMetricsCollectorInterface
     protected int $busyWindow;
     protected SharedMetricsStorageInterface $store;
 
-    public function __construct(?SharedMetricsStorageInterface $store = null)
+    public function __construct(?SharedMetricsStorageInterface $store = null, ?string $workerId = null)
     {
         $this->store = $store ?? app(SharedMetricsStorageInterface::class);
+        $this->workerId = $workerId ?? (gethostname() ?: 'unknown') . ':' . getmypid();
         $this->maxSamples = (int) config('loglens.queue.max_samples', 50);
         $this->longRunningThresholdMs = (float) config('loglens.queue.long_running_threshold_ms', 5000);
         $this->heartbeatInterval = (int) config('loglens.queue.heartbeat_interval_seconds', 10);
@@ -72,6 +99,12 @@ class QueueMetricsCollector implements QueueMetricsCollectorInterface
         if (class_exists(Looping::class)) {
             Event::listen(Looping::class, function (Looping $event) {
                 $this->handleWorkerLooping($event);
+            });
+        }
+
+        if (class_exists(WorkerStopping::class)) {
+            Event::listen(WorkerStopping::class, function (WorkerStopping $event) {
+                $this->handleWorkerStopping($event);
             });
         }
 
@@ -97,7 +130,32 @@ class QueueMetricsCollector implements QueueMetricsCollectorInterface
             return;
         }
 
-        $this->persist(fn () => $this->recordHeartbeat());
+        $this->isWorkerProcess = true;
+        $this->workerStartedAt ??= microtime(true);
+        $this->workerConnection = $event->connectionName;
+        $this->workerQueue = $event->queue;
+
+        // Looping only fires between jobs, so a job that ended without JobProcessed
+        // (e.g. released for retry) is finished by now.
+        $wasBusy = $this->currentJob !== null;
+        $this->currentJob = null;
+
+        $this->persist(fn () => $this->writeWorkerState(force: $wasBusy));
+    }
+
+    /**
+     * Handle WorkerStopping event: remove this worker from the registry immediately.
+     */
+    public function handleWorkerStopping(WorkerStopping $event): void
+    {
+        if (! $this->isEnabled() || ! $this->isWorkerProcess) {
+            return;
+        }
+
+        $this->persist(function () {
+            $this->store->forget(self::KEY_WORKER_PREFIX . $this->workerId);
+            $this->store->removeMember(self::WORKER_SET, $this->workerId);
+        });
     }
 
     /**
@@ -113,11 +171,9 @@ class QueueMetricsCollector implements QueueMetricsCollectorInterface
         $jobId = $this->resolveJobId($event->job);
         $this->activeJobs[$jobId] = $now;
 
-        // The worker stops looping while a job runs, so mark it busy to avoid a false "off".
-        $this->persist(function () use ($now) {
-            $this->store->set(self::KEY_BUSY_SINCE, $now, $this->busyWindow);
-            $this->recordHeartbeat();
-        });
+        // The worker stops looping while a job runs, so publish "busy" now to avoid a false "off".
+        $this->currentJob = ['name' => $event->job->resolveName(), 'started_at' => $now];
+        $this->persist(fn () => $this->writeWorkerState(force: true));
     }
 
     /**
@@ -136,6 +192,9 @@ class QueueMetricsCollector implements QueueMetricsCollectorInterface
         $durationMs = $startTime ? round((microtime(true) - $startTime) * 1000, 2) : 0.0;
         $isLongRunning = $durationMs >= $this->longRunningThresholdMs;
 
+        $this->workerProcessed++;
+        $this->currentJob = null;
+
         $this->persist(function () use ($event, $jobId, $durationMs, $isLongRunning) {
             $this->store->increment(self::KEY_PROCESSED_COUNT);
             // Durations are accumulated as integer microseconds so the counter stays atomic.
@@ -143,8 +202,7 @@ class QueueMetricsCollector implements QueueMetricsCollectorInterface
             if ($isLongRunning) {
                 $this->store->increment(self::KEY_LONG_RUNNING_COUNT);
             }
-            $this->store->forget(self::KEY_BUSY_SINCE);
-            $this->recordHeartbeat();
+            $this->writeWorkerState(force: true);
 
             $this->store->pushHistory(self::KEY_RECENT_PROCESSED, [
                 'id' => $jobId,
@@ -170,10 +228,12 @@ class QueueMetricsCollector implements QueueMetricsCollectorInterface
         $jobId = $this->resolveJobId($event->job);
         unset($this->activeJobs[$jobId]);
 
+        $this->workerFailed++;
+        $this->currentJob = null;
+
         $this->persist(function () use ($event, $jobId) {
             $this->store->increment(self::KEY_FAILED_COUNT);
-            $this->store->forget(self::KEY_BUSY_SINCE);
-            $this->recordHeartbeat();
+            $this->writeWorkerState(force: true);
 
             $exception = $event->exception;
 
@@ -205,20 +265,21 @@ class QueueMetricsCollector implements QueueMetricsCollectorInterface
         $totalJobs = $processedCount + $failedCount;
         $failureRate = $totalJobs > 0 ? round(($failedCount / $totalJobs) * 100, 2) : 0.0;
 
-        $lastHeartbeatAt = $this->lastHeartbeatAt();
-        $busySince = $this->read(fn () => $this->store->get(self::KEY_BUSY_SINCE), null);
-        $busySince = $busySince !== null ? (float) $busySince : null;
+        $workers = $this->getWorkers();
+        $busyWorkers = array_values(array_filter($workers, fn (array $w) => $w['status'] === 'busy'));
         $status = match (true) {
-            $lastHeartbeatAt !== null => 'running',
-            $busySince !== null => 'busy',
+            count($workers) > count($busyWorkers) => 'running',
+            count($busyWorkers) > 0 => 'busy',
             default => 'off',
         };
+        $expectedWorkers = config('loglens.queue.expected_workers');
+        $busySince = $busyWorkers ? min(array_column($busyWorkers, 'busy_since')) : null;
 
         return [
             'enabled' => $this->isEnabled(),
             'processed_count' => $processedCount,
             'failed_count' => $failedCount,
-            'active_jobs_count' => count($this->activeJobs),
+            'active_jobs_count' => count($busyWorkers),
             'avg_duration_ms' => $avgDuration,
             'total_duration_ms' => round($totalDurationMs, 2),
             'long_running_count' => $this->readInt(self::KEY_LONG_RUNNING_COUNT),
@@ -226,12 +287,50 @@ class QueueMetricsCollector implements QueueMetricsCollectorInterface
             'failure_rate_percent' => $failureRate,
             'is_alive' => $status !== 'off',
             'status' => $status,
-            'last_heartbeat_at' => $lastHeartbeatAt,
-            'busy_since' => $busySince,
+            'last_heartbeat_at' => $workers ? max(array_column($workers, 'last_seen')) : null,
+            'busy_since' => $busySince !== null ? (float) $busySince : null,
+            'workers' => $workers,
+            'workers_online' => count($workers),
+            'expected_workers' => is_numeric($expectedWorkers) ? (int) $expectedWorkers : null,
             'backlog' => $this->getBacklog(),
             'recent_failed' => $this->getRecentFailedJobs(10),
             'recent_processed' => $this->getRecentProcessedJobs(10),
         ];
+    }
+
+    /**
+     * Get the queue workers that are currently alive (idle within the heartbeat window, or busy).
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function getWorkers(): array
+    {
+        // Busy workers stop touching the registry, so keep their ids for the whole busy window.
+        $ids = $this->read(fn () => $this->store->getMembers(self::WORKER_SET, $this->busyWindow + self::REGISTRY_INTERVAL_SECONDS), []);
+        $now = microtime(true);
+        $workers = [];
+
+        foreach (array_keys($ids) as $id) {
+            $worker = $this->read(fn () => $this->store->get(self::KEY_WORKER_PREFIX . $id), null);
+            if (! is_array($worker)) {
+                continue; // State key expired: the worker died or stopped
+            }
+
+            $isBusy = ($worker['status'] ?? 'idle') === 'busy'
+                && $now - (float) ($worker['busy_since'] ?? 0) <= $this->busyWindow;
+            $isAlive = $now - (float) ($worker['last_seen'] ?? 0) <= $this->heartbeatWindow;
+
+            if (! $isBusy && ! $isAlive) {
+                continue;
+            }
+
+            $worker['status'] = $isBusy ? 'busy' : 'idle';
+            $workers[] = $worker;
+        }
+
+        usort($workers, fn (array $a, array $b) => strcmp((string) $a['id'], (string) $b['id']));
+
+        return $workers;
     }
 
     /**
@@ -274,12 +373,11 @@ class QueueMetricsCollector implements QueueMetricsCollectorInterface
     }
 
     /**
-     * Reset tracked queue metrics.
+     * Reset tracked queue metrics. Live worker state is not a metric and is kept.
      */
     public function reset(): void
     {
         $this->activeJobs = [];
-        $this->lastHeartbeatWrite = 0.0;
 
         $this->persist(function () {
             foreach ([
@@ -289,8 +387,6 @@ class QueueMetricsCollector implements QueueMetricsCollectorInterface
                 self::KEY_LONG_RUNNING_COUNT,
                 self::KEY_RECENT_PROCESSED,
                 self::KEY_RECENT_FAILED,
-                self::KEY_BUSY_SINCE,
-                'heartbeat:' . self::HEARTBEAT,
             ] as $key) {
                 $this->store->forget($key);
             }
@@ -314,27 +410,44 @@ class QueueMetricsCollector implements QueueMetricsCollectorInterface
     }
 
     /**
-     * Write the worker heartbeat, at most once per interval per worker process.
+     * Publish this worker's state. Idle-loop writes are throttled to one per interval;
+     * job start/finish force a write so busy/idle changes show up immediately.
      */
-    protected function recordHeartbeat(): void
+    protected function writeWorkerState(bool $force = false): void
     {
+        if (! $this->isWorkerProcess) {
+            return;
+        }
+
         $now = microtime(true);
-        if ($now - $this->lastHeartbeatWrite < $this->heartbeatInterval) {
+        if (! $force && $now - $this->lastHeartbeatWrite < $this->heartbeatInterval) {
             return;
         }
 
         $this->lastHeartbeatWrite = $now;
-        $this->store->recordHeartbeat(self::HEARTBEAT, $this->heartbeatWindow);
-    }
+        $isBusy = $this->currentJob !== null;
 
-    /**
-     * Timestamp of the last worker heartbeat still inside the liveness window.
-     */
-    protected function lastHeartbeatAt(): ?float
-    {
-        $last = (float) $this->read(fn () => $this->store->get('heartbeat:' . self::HEARTBEAT, 0.0), 0.0);
+        // A busy worker stops writing until its job ends, so its state must outlive the job.
+        $this->store->set(self::KEY_WORKER_PREFIX . $this->workerId, [
+            'id' => $this->workerId,
+            'hostname' => gethostname() ?: 'unknown',
+            'pid' => getmypid(),
+            'connection' => $this->workerConnection,
+            'queue' => $this->workerQueue,
+            'started_at' => $this->workerStartedAt,
+            'last_seen' => $now,
+            'status' => $isBusy ? 'busy' : 'idle',
+            'current_job' => $this->currentJob['name'] ?? null,
+            'busy_since' => $this->currentJob['started_at'] ?? null,
+            'processed' => $this->workerProcessed,
+            'failed' => $this->workerFailed,
+            'memory_mb' => round(memory_get_usage(true) / 1048576, 1),
+        ], $isBusy ? max($this->busyWindow, $this->heartbeatWindow) : $this->heartbeatWindow);
 
-        return $last > 0.0 && (microtime(true) - $last) <= $this->heartbeatWindow ? $last : null;
+        if ($now - $this->lastRegistryTouch >= self::REGISTRY_INTERVAL_SECONDS) {
+            $this->lastRegistryTouch = $now;
+            $this->store->touchMember(self::WORKER_SET, $this->workerId, $this->busyWindow + self::REGISTRY_INTERVAL_SECONDS);
+        }
     }
 
     /**

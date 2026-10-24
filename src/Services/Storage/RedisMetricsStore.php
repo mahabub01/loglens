@@ -168,6 +168,57 @@ class RedisMetricsStore implements SharedMetricsStorageInterface
     }
 
     /**
+     * Mark a member of a registry set as seen now, pruning members older than the max age.
+     */
+    public function touchMember(string $set, string $member, int $maxAgeSeconds): void
+    {
+        try {
+            $fullKey = "{$this->prefix}:set:{$set}";
+            $now = microtime(true);
+            $redis = $this->redis();
+
+            $redis->zadd($fullKey, [$member => $now]);
+            $redis->zremrangebyscore($fullKey, '-inf', (string) ($now - $maxAgeSeconds));
+            $redis->expire($fullKey, $this->ttl);
+        } catch (Throwable $e) {
+            $this->lastConnectionError = $e->getMessage();
+        }
+    }
+
+    /**
+     * Get registry members seen within the max age.
+     */
+    public function getMembers(string $set, int $maxAgeSeconds): array
+    {
+        try {
+            $fullKey = "{$this->prefix}:set:{$set}";
+            $members = $this->redis()->zrangebyscore($fullKey, (string) (microtime(true) - $maxAgeSeconds), '+inf', ['withscores' => true]);
+
+            if (! is_array($members)) {
+                return [];
+            }
+
+            return array_map('floatval', $members);
+        } catch (Throwable $e) {
+            $this->lastConnectionError = $e->getMessage();
+
+            return [];
+        }
+    }
+
+    /**
+     * Remove a member from a registry set.
+     */
+    public function removeMember(string $set, string $member): void
+    {
+        try {
+            $this->redis()->zrem("{$this->prefix}:set:{$set}", $member);
+        } catch (Throwable $e) {
+            $this->lastConnectionError = $e->getMessage();
+        }
+    }
+
+    /**
      * Record a collector heartbeat timestamp.
      */
     public function recordHeartbeat(string $collectorName, int $ttlSeconds = 60): void

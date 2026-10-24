@@ -50,6 +50,21 @@ class FailingMetricsStore implements SharedMetricsStorageInterface
         throw new RuntimeException('Store unavailable');
     }
 
+    public function touchMember(string $set, string $member, int $maxAgeSeconds): void
+    {
+        throw new RuntimeException('Store unavailable');
+    }
+
+    public function getMembers(string $set, int $maxAgeSeconds): array
+    {
+        throw new RuntimeException('Store unavailable');
+    }
+
+    public function removeMember(string $set, string $member): void
+    {
+        throw new RuntimeException('Store unavailable');
+    }
+
     public function recordHeartbeat(string $collectorName, int $ttlSeconds = 60): void
     {
         throw new RuntimeException('Store unavailable');

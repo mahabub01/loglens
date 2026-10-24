@@ -4,7 +4,38 @@ This guide describes how to upgrade between versions of LogLens.
 
 ---
 
-## Upgrading to the Next Release from 1.0.0
+## Upgrading to 1.2.0 from 1.1.0
+
+The Queue page now lists each running worker.
+
+### 1. Restart Queue Workers (Required)
+```bash
+php artisan queue:restart
+```
+Workers that are still running the old code keep writing the old shared heartbeat and do not appear in the worker list until they restart.
+
+### 2. Optional: Expected Worker Count
+Set how many workers should be running (for example your supervisor `numprocs`). The Queue page then warns with "N / M Online" when some are missing:
+
+```dotenv
+LOGLENS_QUEUE_EXPECTED_WORKERS=3
+```
+
+If you published the config file, add `'expected_workers' => env('LOGLENS_QUEUE_EXPECTED_WORKERS'),` to the `queue` section.
+
+### 3. Custom Storage Implementations
+If you implemented `SharedMetricsStorageInterface` yourself, add the registry set methods `touchMember(string $set, string $member, int $maxAgeSeconds): void`, `getMembers(string $set, int $maxAgeSeconds): array` (member => last seen timestamp) and `removeMember(string $set, string $member): void`.
+
+### 4. Republish Views
+If you published the views, republish them to get the worker list:
+
+```bash
+php artisan vendor:publish --tag=loglens-views --force
+```
+
+---
+
+## Upgrading to 1.1.0 from 1.0.0
 
 Queue and scheduler metrics are now persisted to the shared metrics store instead of per-process memory, so the Queue and Scheduler dashboards show real data.
 

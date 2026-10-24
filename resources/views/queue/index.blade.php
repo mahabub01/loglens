@@ -18,12 +18,12 @@
                 @switch($summary['status'] ?? 'off')
                     @case('running')
                         <span class="badge bg-success text-white" title="Last heartbeat {{ date('H:i:s', (int) $summary['last_heartbeat_at']) }}">
-                            <i class="fa-solid fa-circle fa-2xs me-1"></i> Worker Running
+                            <i class="fa-solid fa-circle fa-2xs me-1"></i> Worker Running ({{ $summary['workers_online'] }} online)
                         </span>
                         @break
                     @case('busy')
-                        <span class="badge bg-warning text-dark" title="Processing a job since {{ date('H:i:s', (int) $summary['busy_since']) }}">
-                            <i class="fa-solid fa-circle fa-2xs me-1"></i> Worker Running (busy)
+                        <span class="badge bg-warning text-dark" title="All workers busy; oldest job started {{ date('H:i:s', (int) $summary['busy_since']) }}">
+                            <i class="fa-solid fa-circle fa-2xs me-1"></i> Worker Running (busy, {{ $summary['workers_online'] }} online)
                         </span>
                         @break
                     @default
@@ -141,6 +141,91 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <!-- Queue Workers Table -->
+    @php($workers = $summary['workers'] ?? [])
+    @php($expectedWorkers = $summary['expected_workers'] ?? null)
+    <div class="ll-card p-3 mb-4">
+        <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom border-secondary-subtle">
+            <div>
+                <h6 class="mb-0 fw-bold text-light">
+                    <i class="fa-solid fa-gears text-info me-2"></i> Queue Workers
+                </h6>
+                <small class="text-muted">Live <code>queue:work</code> processes reporting a heartbeat</small>
+            </div>
+            @if ($expectedWorkers !== null && count($workers) < $expectedWorkers)
+                <span class="badge bg-warning text-dark ll-badge-pill" title="loglens.queue.expected_workers = {{ $expectedWorkers }}">
+                    <i class="fa-solid fa-triangle-exclamation me-1"></i> {{ count($workers) }} / {{ $expectedWorkers }} Online
+                </span>
+            @else
+                <span class="badge bg-info-subtle text-info border border-info-subtle ll-badge-pill">
+                    {{ count($workers) }}{{ $expectedWorkers !== null ? ' / ' . $expectedWorkers : '' }} Online
+                </span>
+            @endif
+        </div>
+
+        @if(count($workers) > 0)
+        <div class="table-responsive">
+            <table class="table table-dark table-hover align-middle mb-0" style="font-size: 0.85rem;">
+                <thead class="text-muted">
+                    <tr>
+                        <th>Worker</th>
+                        <th>Queue</th>
+                        <th>Status</th>
+                        <th>Current Job</th>
+                        <th class="text-end">Jobs</th>
+                        <th class="text-end">Memory</th>
+                        <th class="text-end">Uptime</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($workers as $worker)
+                    <tr>
+                        <td>
+                            <strong class="text-light font-monospace">{{ $worker['id'] }}</strong>
+                            <small class="text-muted d-block">last seen {{ date('H:i:s', (int) $worker['last_seen']) }}</small>
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary-subtle text-light">{{ $worker['queue'] ?? '-' }}</span>
+                            <small class="text-muted d-block">{{ $worker['connection'] ?? '' }}</small>
+                        </td>
+                        <td>
+                            @if($worker['status'] === 'busy')
+                                <span class="badge bg-warning text-dark">Busy</span>
+                            @else
+                                <span class="badge bg-success text-white">Idle</span>
+                            @endif
+                        </td>
+                        <td>
+                            @if($worker['current_job'])
+                                <span class="text-light text-break">{{ $worker['current_job'] }}</span>
+                                <small class="text-muted d-block">for {{ \Illuminate\Support\Carbon::createFromTimestamp((int) $worker['busy_since'])->diffForHumans(null, true, true) }}</small>
+                            @else
+                                <span class="text-muted">-</span>
+                            @endif
+                        </td>
+                        <td class="text-end">
+                            <span class="text-success">{{ number_format($worker['processed']) }}</span>
+                            @if($worker['failed'] > 0)
+                                <span class="text-danger d-block small">{{ number_format($worker['failed']) }} failed</span>
+                            @endif
+                        </td>
+                        <td class="text-end text-muted">{{ $worker['memory_mb'] }} MB</td>
+                        <td class="text-end text-muted">
+                            {{ $worker['started_at'] ? \Illuminate\Support\Carbon::createFromTimestamp((int) $worker['started_at'])->diffForHumans(null, true, true) : '-' }}
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+        @else
+        <div class="p-4 text-center text-muted">
+            <i class="fa-solid fa-power-off fs-2 text-danger opacity-50 mb-2"></i>
+            <p class="small mb-0">No queue workers are reporting. Start <code>php artisan queue:work</code> or check supervisor.</p>
+        </div>
+        @endif
     </div>
 
     <!-- Recent Failed Jobs Table -->

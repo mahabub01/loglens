@@ -49,6 +49,23 @@ interface SharedMetricsStorageInterface
     public function forget(string $key): void;
 
     /**
+     * Mark a member of a registry set as seen now, pruning members older than the max age.
+     */
+    public function touchMember(string $set, string $member, int $maxAgeSeconds): void;
+
+    /**
+     * Get registry members seen within the max age.
+     *
+     * @return array<string, float> Member => last seen timestamp
+     */
+    public function getMembers(string $set, int $maxAgeSeconds): array;
+
+    /**
+     * Remove a member from a registry set.
+     */
+    public function removeMember(string $set, string $member): void;
+
+    /**
      * Record a collector heartbeat timestamp.
      */
     public function recordHeartbeat(string $collectorName, int $ttlSeconds = 60): void;
