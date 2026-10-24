@@ -13,9 +13,22 @@
                 </span>
             </div>
         </div>
-        <span class="badge bg-{{ $is_enabled ? 'success' : 'secondary' }} text-white d-none d-md-inline-block">
-            {{ $is_enabled ? 'Scheduler Observed' : 'Scheduler Standby' }}
-        </span>
+        <div class="d-flex align-items-center gap-2">
+            @if ($is_enabled)
+                @if (($summary['status'] ?? 'off') === 'running')
+                    <span class="badge bg-success text-white" title="Last heartbeat {{ date('H:i:s', (int) $summary['last_heartbeat_at']) }}">
+                        <i class="fa-solid fa-circle fa-2xs me-1"></i> Scheduler Running
+                    </span>
+                @else
+                    <span class="badge bg-danger text-white" title="No schedule:run heartbeat in the last {{ config('loglens.scheduler.heartbeat_window_seconds', 120) }}s. Check your cron entry.">
+                        <i class="fa-solid fa-circle fa-2xs me-1"></i> Scheduler Off
+                    </span>
+                @endif
+            @endif
+            <span class="badge bg-{{ $is_enabled ? 'success' : 'secondary' }} text-white d-none d-md-inline-block">
+                {{ $is_enabled ? 'Scheduler Observed' : 'Scheduler Standby' }}
+            </span>
+        </div>
     </div>
 
     <!-- Quick Metric Cards -->
@@ -99,7 +112,11 @@
                 </div>
                 <div class="d-flex align-items-center justify-content-between mt-2 pt-2 border-top border-secondary-subtle">
                     <span class="small text-muted">Observed Time</span>
-                    <span class="badge bg-secondary-subtle text-light ll-badge-pill">Heartbeat</span>
+                    @if ($summary['is_alive'] ?? false)
+                        <span class="badge bg-success-subtle text-success ll-badge-pill">Heartbeat Live</span>
+                    @else
+                        <span class="badge bg-danger-subtle text-danger ll-badge-pill">Heartbeat Lost</span>
+                    @endif
                 </div>
             </div>
         </div>

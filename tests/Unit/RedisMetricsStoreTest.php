@@ -82,6 +82,18 @@ class RedisMetricsStoreTest extends TestCase
                 }
                 return array_slice($this->storage[$key], $start, $stop - $start + 1);
             }
+
+            public function del(array $keys): int
+            {
+                $deleted = 0;
+                foreach ($keys as $key) {
+                    if (array_key_exists($key, $this->storage)) {
+                        unset($this->storage[$key]);
+                        $deleted++;
+                    }
+                }
+                return $deleted;
+            }
         };
 
         Redis::shouldReceive('connection')
@@ -112,6 +124,12 @@ class RedisMetricsStoreTest extends TestCase
         // Heartbeat
         $store->recordHeartbeat('test_worker');
         $this->assertTrue($store->isHeartbeatAlive('test_worker', 10));
+
+        // Forget removes both the scalar value and the history list
+        $store->forget('counter');
+        $store->forget('cpu');
+        $this->assertNull($store->get('counter'));
+        $this->assertEmpty($store->getHistory('cpu'));
     }
 
     public function test_detects_stale_metrics_and_expired_heartbeats(): void

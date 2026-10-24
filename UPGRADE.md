@@ -4,6 +4,52 @@ This guide describes how to upgrade between versions of LogLens.
 
 ---
 
+## Upgrading to the Next Release from 1.0.0
+
+Queue and scheduler metrics are now persisted to the shared metrics store instead of per-process memory, so the Queue and Scheduler dashboards show real data.
+
+### 1. Restart Queue Workers (Required)
+Long-running `queue:work` processes keep the old collector code in memory until they restart. After upgrading, run:
+
+```bash
+php artisan queue:restart
+```
+
+The scheduler needs no action, because each `schedule:run` invocation loads the new code.
+
+### 2. Use a Shared Cache Store
+Metrics are written through Laravel's cache (or Redis when `LOGLENS_METRICS_DRIVER=redis`). The cache store must be shared between your web server, queue workers and scheduler: `file`, `database`, `redis` or `memcached` work, but `array` does not. For multiple servers or busy queues, Redis is recommended.
+
+### 3. Optional: Metrics Retention
+Shared counters and history now expire after `loglens.metrics.ttl` seconds (default `604800`, 7 days). If you published the config file, add the key manually or override it via `.env`:
+
+```dotenv
+LOGLENS_METRICS_TTL=604800
+```
+
+### 4. Custom Storage Implementations
+If you implemented `SharedMetricsStorageInterface` yourself:
+- add the new `forget(string $key): void` method. It must remove both the value and the history list stored under the key.
+- update `recordHeartbeat()` to the new signature `recordHeartbeat(string $collectorName, int $ttlSeconds = 60): void`.
+
+### 5. Optional: Running/Off Status Tuning
+The Queue and Scheduler pages now show whether `queue:work` and the scheduler are running. If you published the config file, these keys fall back to their defaults, so add them only if you need different values:
+
+```php
+'queue' => [
+    'heartbeat_interval_seconds' => 10,  // idle worker writes at most once per interval
+    'heartbeat_window_seconds' => 60,    // raise if workers use a large --sleep value
+    'busy_window_seconds' => env('LOGLENS_QUEUE_BUSY_WINDOW', 900), // match your longest --timeout
+],
+'scheduler' => [
+    'heartbeat_window_seconds' => 120,
+],
+```
+
+The cron entry, supervisor and web server must run as the same user (or share a group with writable cache files). Otherwise the web process cannot read the heartbeat, and the status always shows **Off**.
+
+---
+
 ## Upgrading to 1.0.0 from Dev Versions
 
 LogLens 1.0.0 represents the first production-ready, stable release.

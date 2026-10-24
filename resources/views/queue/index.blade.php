@@ -13,9 +13,29 @@
                 </span>
             </div>
         </div>
-        <span class="badge bg-{{ $is_enabled ? 'success' : 'secondary' }} text-white d-none d-md-inline-block">
-            {{ $is_enabled ? 'Queue Events Observed' : 'Queue Monitor Standby' }}
-        </span>
+        <div class="d-flex align-items-center gap-2">
+            @if ($is_enabled)
+                @switch($summary['status'] ?? 'off')
+                    @case('running')
+                        <span class="badge bg-success text-white" title="Last heartbeat {{ date('H:i:s', (int) $summary['last_heartbeat_at']) }}">
+                            <i class="fa-solid fa-circle fa-2xs me-1"></i> Worker Running
+                        </span>
+                        @break
+                    @case('busy')
+                        <span class="badge bg-warning text-dark" title="Processing a job since {{ date('H:i:s', (int) $summary['busy_since']) }}">
+                            <i class="fa-solid fa-circle fa-2xs me-1"></i> Worker Running (busy)
+                        </span>
+                        @break
+                    @default
+                        <span class="badge bg-danger text-white" title="No queue:work heartbeat in the last {{ config('loglens.queue.heartbeat_window_seconds', 60) }}s. Check supervisor / queue:work.">
+                            <i class="fa-solid fa-circle fa-2xs me-1"></i> Worker Off
+                        </span>
+                @endswitch
+            @endif
+            <span class="badge bg-{{ $is_enabled ? 'success' : 'secondary' }} text-white d-none d-md-inline-block">
+                {{ $is_enabled ? 'Queue Events Observed' : 'Queue Monitor Standby' }}
+            </span>
+        </div>
     </div>
 
     <!-- Active Alerts Banner if any -->

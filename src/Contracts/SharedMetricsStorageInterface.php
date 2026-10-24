@@ -44,9 +44,14 @@ interface SharedMetricsStorageInterface
     public function getHistory(string $key, int $limit = 60): array;
 
     /**
+     * Remove a value and any history list stored under the given key.
+     */
+    public function forget(string $key): void;
+
+    /**
      * Record a collector heartbeat timestamp.
      */
-    public function recordHeartbeat(string $collectorName): void;
+    public function recordHeartbeat(string $collectorName, int $ttlSeconds = 60): void;
 
     /**
      * Check if a collector heartbeat is alive.

@@ -2,6 +2,7 @@
 
 namespace MehrabHossain\LogLens\Tests\Feature;
 
+use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Console\Events\ScheduledTaskFailed;
 use Illuminate\Console\Events\ScheduledTaskFinished;
 use Illuminate\Console\Events\ScheduledTaskSkipped;
@@ -12,6 +13,8 @@ use Illuminate\Support\Facades\DB;
 use MehrabHossain\LogLens\Contracts\SchedulerMetricsCollectorInterface;
 use MehrabHossain\LogLens\Tests\TestCase;
 use RuntimeException;
+use Symfony\Component\Console\Input\ArrayInput;
+use Symfony\Component\Console\Output\NullOutput;
 
 class SchedulerMonitoringTest extends TestCase
 {
@@ -130,5 +133,20 @@ class SchedulerMonitoringTest extends TestCase
         $response->assertSee('Disk full during export');
         $response->assertSee('php artisan sync:catalogs');
         $response->assertSee('Skipped (Overlap)');
+    }
+
+    public function test_dashboard_shows_scheduler_status_from_schedule_run_command(): void
+    {
+        $this->enablePackage();
+        $this->authorizeAccess();
+
+        $this->get('/loglens/scheduler')->assertSee('Scheduler Off');
+
+        // Dispatched through the real event bus, as cron starting `schedule:run` does
+        event(new CommandStarting('schedule:run', new ArrayInput([]), new NullOutput()));
+
+        $this->get('/loglens/scheduler')
+            ->assertSee('Scheduler Running')
+            ->assertDontSee('Scheduler Off');
     }
 }

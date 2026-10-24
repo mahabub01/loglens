@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Fixed
+- **Queue & Scheduler dashboards always showed 0 / "Waiting".** `QueueMetricsCollector` and `SchedulerMetricsCollector` kept metrics in per-process memory, so events recorded inside `queue:work` and `schedule:run` never reached the dashboard's web process. Both collectors now write counters, durations, last-run time and recent history to the shared metrics store (`SharedMetricsStorageInterface`), so any process can read them.
+- `CacheMetricsStore::increment()` is now atomic (`Cache::add()` + `Cache::increment()`), so counts are no longer lost when several queue workers run concurrently.
+- Shared counters and history no longer silently reset every 24 hours. Their expiry is now configurable via `loglens.metrics.ttl` (`LOGLENS_METRICS_TTL`, default 7 days).
+- Storage failures inside the queue and scheduler collectors are swallowed and can never interrupt jobs or scheduled tasks.
+
+### Added
+- `SharedMetricsStorageInterface::forget()` for removing a value and its history list (implemented by `CacheMetricsStore` and `RedisMetricsStore`).
+- **Scheduler & queue worker running/off status.** Both pages show a status badge in the header, and `getSummary()` exposes `status`, `is_alive` and `last_heartbeat_at`.
+  - Scheduler: a heartbeat is recorded whenever `schedule:run` / `schedule:work` starts (`CommandStarting`), even when no task is due. No heartbeat within `loglens.scheduler.heartbeat_window_seconds` (120s) means **Off**.
+  - Queue: idle workers record a heartbeat from the `Looping` event, throttled to once per `loglens.queue.heartbeat_interval_seconds` (10s) per worker. No heartbeat within `loglens.queue.heartbeat_window_seconds` (60s) means **Off**.
+  - A worker inside a long job stops looping, so `JobProcessing` sets a busy marker (`busy_since`, cleared when the job finishes). The worker then shows **Running (busy)** instead of Off, for up to `loglens.queue.busy_window_seconds` (900s).
+- `SharedMetricsStorageInterface::recordHeartbeat()` accepts an optional `$ttlSeconds` argument (default `60`).
+
+---
+
 ## [1.0.0] - 2026-10-17
 
 ### Added

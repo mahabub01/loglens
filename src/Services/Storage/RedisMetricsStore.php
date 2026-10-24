@@ -10,12 +10,14 @@ class RedisMetricsStore implements SharedMetricsStorageInterface
 {
     protected string $connection;
     protected string $prefix;
+    protected int $ttl;
     protected ?string $lastConnectionError = null;
 
-    public function __construct(?string $connection = null, ?string $prefix = null)
+    public function __construct(?string $connection = null, ?string $prefix = null, ?int $ttl = null)
     {
         $this->connection = $connection ?? (string) config('loglens.redis.connection', 'default');
         $this->prefix = $prefix ?? (string) config('loglens.redis.prefix', 'loglens:metrics');
+        $this->ttl = $ttl ?? (int) config('loglens.metrics.ttl', 604800);
     }
 
     /**
@@ -118,7 +120,7 @@ class RedisMetricsStore implements SharedMetricsStorageInterface
 
             $redis->lpush($fullKey, json_encode($sample));
             $redis->ltrim($fullKey, 0, $maxSamples - 1);
-            $redis->expire($fullKey, 86400); // 24-hour expiration
+            $redis->expire($fullKey, $this->ttl);
         } catch (Throwable $e) {
             $this->lastConnectionError = $e->getMessage();
         }
@@ -154,11 +156,23 @@ class RedisMetricsStore implements SharedMetricsStorageInterface
     }
 
     /**
+     * Remove a value and any history list stored under the given key.
+     */
+    public function forget(string $key): void
+    {
+        try {
+            $this->redis()->del(["{$this->prefix}:{$key}", "{$this->prefix}:history:{$key}"]);
+        } catch (Throwable $e) {
+            $this->lastConnectionError = $e->getMessage();
+        }
+    }
+
+    /**
      * Record a collector heartbeat timestamp.
      */
-    public function recordHeartbeat(string $collectorName): void
+    public function recordHeartbeat(string $collectorName, int $ttlSeconds = 60): void
     {
-        $this->set("heartbeat:{$collectorName}", microtime(true), 60);
+        $this->set("heartbeat:{$collectorName}", microtime(true), $ttlSeconds);
     }
 
     /**

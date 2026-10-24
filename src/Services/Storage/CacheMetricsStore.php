@@ -10,11 +10,13 @@ class CacheMetricsStore implements SharedMetricsStorageInterface
 {
     protected ?string $storeName;
     protected string $prefix;
+    protected int $ttl;
 
-    public function __construct(?string $storeName = null, ?string $prefix = null)
+    public function __construct(?string $storeName = null, ?string $prefix = null, ?int $ttl = null)
     {
         $this->storeName = $storeName;
         $this->prefix = $prefix ?? 'loglens:metrics';
+        $this->ttl = $ttl ?? (int) config('loglens.metrics.ttl', 604800);
     }
 
     public function isAvailable(): bool
@@ -58,11 +60,13 @@ class CacheMetricsStore implements SharedMetricsStorageInterface
     {
         try {
             $fullKey = "{$this->prefix}:{$key}";
-            $val = (int) Cache::store($this->storeName)->get($fullKey, 0);
-            $val += $amount;
-            Cache::store($this->storeName)->put($fullKey, $val, 86400);
+            $cache = Cache::store($this->storeName);
 
-            return $val;
+            // Seed the counter (no-op when it already exists), then let the
+            // driver increment it atomically so concurrent workers never lose counts.
+            $cache->add($fullKey, 0, $this->ttl);
+
+            return (int) $cache->increment($fullKey, $amount);
         } catch (Throwable) {
             return 0;
         }
@@ -82,7 +86,7 @@ class CacheMetricsStore implements SharedMetricsStorageInterface
                 $history = array_slice($history, 0, $maxSamples);
             }
 
-            Cache::store($this->storeName)->put($fullKey, $history, 86400);
+            Cache::store($this->storeName)->put($fullKey, $history, $this->ttl);
         } catch (Throwable) {
             // Drop on failure
         }
@@ -103,9 +107,19 @@ class CacheMetricsStore implements SharedMetricsStorageInterface
         }
     }
 
-    public function recordHeartbeat(string $collectorName): void
+    public function forget(string $key): void
     {
-        $this->set("heartbeat:{$collectorName}", microtime(true), 60);
+        try {
+            Cache::store($this->storeName)->forget("{$this->prefix}:{$key}");
+            Cache::store($this->storeName)->forget("{$this->prefix}:history:{$key}");
+        } catch (Throwable) {
+            // Ignore store failures
+        }
+    }
+
+    public function recordHeartbeat(string $collectorName, int $ttlSeconds = 60): void
+    {
+        $this->set("heartbeat:{$collectorName}", microtime(true), $ttlSeconds);
     }
 
     public function isHeartbeatAlive(string $collectorName, int $ttlSeconds = 10): bool

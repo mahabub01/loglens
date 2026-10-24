@@ -191,6 +191,12 @@ return [
         'poll_backlog' => false,
         'monitored_queues' => ['default'],
         'max_samples' => 50,
+        // Worker liveness: idle workers write a heartbeat at most once per interval.
+        // Raise the window if workers run with a large --sleep value.
+        'heartbeat_interval_seconds' => 10,
+        'heartbeat_window_seconds' => 60,
+        // A job that started within this window keeps the worker "busy" (match your --timeout)
+        'busy_window_seconds' => env('LOGLENS_QUEUE_BUSY_WINDOW', 900),
     ],
 
     /*
@@ -205,6 +211,8 @@ return [
     'scheduler' => [
         'enabled' => env('LOGLENS_SCHEDULER_MONITORING', false),
         'max_samples' => 50,
+        // Cron runs schedule:run every minute; no heartbeat within this window means "off"
+        'heartbeat_window_seconds' => 120,
     ],
 
     /*
@@ -255,6 +263,7 @@ return [
         'driver' => env('LOGLENS_METRICS_DRIVER', 'memory'), // 'memory' or 'redis'
         'retention_seconds' => 3600, // 1 hour buffer retention
         'max_samples' => 3600,
+        'ttl' => env('LOGLENS_METRICS_TTL', 604800), // shared counter/history expiry (7 days)
     ],
 
     /*

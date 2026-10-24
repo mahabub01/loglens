@@ -5,6 +5,7 @@ namespace MehrabHossain\LogLens\Tests\Feature;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
+use Illuminate\Queue\Events\Looping;
 use Illuminate\Support\Facades\DB;
 use MehrabHossain\LogLens\Contracts\QueueMetricsCollectorInterface;
 use MehrabHossain\LogLens\Tests\TestCase;
@@ -141,5 +142,20 @@ class QueueMonitoringTest extends TestCase
         $response->assertSee('App\\Jobs\\ChargeCreditCard');
         $response->assertSee('Card expired');
         $response->assertSee('payments');
+    }
+
+    public function test_dashboard_shows_worker_status_from_idle_loop_heartbeat(): void
+    {
+        $this->enablePackage();
+        $this->authorizeAccess();
+
+        $this->get('/loglens/queue')->assertSee('Worker Off');
+
+        // Dispatched through the real event bus, as `queue:work` does while polling an empty queue
+        event(new Looping('database', 'default'));
+
+        $this->get('/loglens/queue')
+            ->assertSee('Worker Running')
+            ->assertDontSee('Worker Off');
     }
 }
